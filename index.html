@@ -80,7 +80,6 @@ input:focus-visible,textarea:focus-visible{outline:2px solid var(--focus);outlin
 .item-head button{margin-left:auto;border:0;background:none;color:var(--ink3);font:inherit;
   font-size:14px;cursor:pointer;padding:2px 0;line-height:1;transition:color .15s}
 .item-head button:hover{color:var(--red)}
-.item-note{font-size:12.5px;color:var(--ink3);margin:-6px 0 11px 19px}
 .set{display:flex;align-items:center;gap:9px;padding:10px 12px;background:var(--field);border-radius:10px;margin-bottom:6px}
 .set input{border:0;background:none;font:inherit;color:var(--ink);font-variant-numeric:tabular-nums;
   width:100%;min-width:0;padding:0}
@@ -92,6 +91,18 @@ input:focus-visible,textarea:focus-visible{outline:2px solid var(--focus);outlin
   flex:none;padding:4px 2px;line-height:1;transition:color .15s}
 .set .del:hover{color:var(--red)}
 .set:focus-within{background:#fff;box-shadow:inset 0 0 0 1px var(--line)}
+
+/* 有氧器械的参数格 */
+.cfields{display:flex;gap:8px}
+.cf{flex:1;min-width:0;background:var(--field);border-radius:10px;padding:10px 5px 8px;
+  display:flex;flex-direction:column;align-items:center;gap:1px}
+.cf input{border:0;background:none;font:inherit;font-size:22px;font-weight:650;color:var(--ink);
+  text-align:center;width:100%;min-width:0;font-variant-numeric:tabular-nums}
+.cf input::placeholder{color:var(--ink3);font-weight:400}
+.cf b{font-size:12px;font-weight:600;color:var(--ink2)}
+.cf i{font-size:10.5px;font-style:normal;color:var(--ink3);line-height:1.2}
+.cf:focus-within{background:#fff;box-shadow:inset 0 0 0 1px var(--line)}
+
 .mini{font-size:13px;color:var(--ink3);border:0;background:none;font-family:inherit;
   padding:4px 2px;cursor:pointer;transition:color .15s}
 .mini:hover{color:var(--ink)}
@@ -106,10 +117,13 @@ button.primary:hover{opacity:.88}
 button.primary.saved{background:#2E7D4F}
 
 .summary{border:1px solid var(--line);border-radius:var(--r);padding:16px}
-.summary-head{display:flex;align-items:center;gap:8px;margin-bottom:11px;flex-wrap:wrap}
-.summary-head .dot{width:8px;height:8px;border-radius:50%;flex:none}
-.summary-head b{font-size:14.5px;font-weight:500}
+.summary-head{display:flex;align-items:center;margin-bottom:4px}
 .summary-head time{margin-left:auto;font-size:12.5px;color:var(--ink3);font-variant-numeric:tabular-nums}
+.srow{display:flex;align-items:baseline;gap:8px;padding:7px 0;border-bottom:1px solid var(--line)}
+.srow:last-of-type{border-bottom:0}
+.srow .dot{width:8px;height:8px;border-radius:50%;flex:none;transform:translateY(-1px)}
+.srow b{font-size:14.5px;font-weight:600}
+.srow .sv{margin-left:auto;font-size:13px;color:var(--ink2);font-variant-numeric:tabular-nums;text-align:right}
 .summary .note{margin-top:12px;font-size:14px;color:var(--ink2);white-space:pre-wrap}
 
 .stat-figure{font-size:52px;font-weight:680;letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1.05}
@@ -313,6 +327,24 @@ button.primary.saved{background:#2E7D4F}
 
   var FALLBACK = ["#C1352B","#20509E","#A97A0B","#2E7D4F","#6B7280","#3A3F45","#0E7C86","#7A4E9B"];
 
+  /* 有氧参数的名称与单位 */
+  var CARDIO_LABEL = {
+    min:["时间","分钟"], resist:["阻力","档"], incline:["坡度","%"],
+    speed:["速度","km/h"], rpm:["踏频",""], spm:["桨频","次/分"],
+    level:["档位","档"], dist:["距离","米"], count:["个数","个"]
+  };
+  /* 每种有氧器械记哪几项 */
+  var CARDIO_FIELDS = {
+    "跑步机":   ["min","speed","incline"],
+    "椭圆机":   ["min","resist","rpm"],
+    "动感单车": ["min","resist","rpm"],
+    "划船机":   ["min","spm","dist"],
+    "登山机":   ["min","level","speed"],
+    "踏步机":   ["min","resist"],
+    "跳绳":     ["min","count"]
+  };
+  var CARDIO_DEFAULT = ["min","resist"];
+
   var store = {
     get: function(k,d){ try{ var v=JSON.parse(localStorage.getItem(k)); return v===null?d:v; }catch(e){ return d; } },
     set: function(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
@@ -322,7 +354,7 @@ button.primary.saved{background:#2E7D4F}
   var workouts= store.get("workouts", []);
   var picked  = [];                            // 今天选中的器械（有序）
   var draft   = {};                            // 器械名 -> [{w,s,r}]
-  var draftNote = {};                          // 器械名 -> 备注（有氧的时间/阻力等）
+  var draftCardio = {};                        // 有氧器械名 -> {min, resist, speed, ...}
   var editing = false;                         // 是否处于编辑态；否则显示今日摘要
 
   var $ = function(s){ return document.querySelector(s); };
@@ -333,6 +365,9 @@ button.primary.saved{background:#2E7D4F}
     LIBRARY[g].forEach(function(m){ PLACE_OF[m] = g; });
   });
   custom.forEach(function(m){ if(!PLACE_OF[m]) PLACE_OF[m] = "其他"; });
+
+  function isCardio(name){ return PLACE_OF[name] === "有氧"; }
+  function cardioFields(name){ return isCardio(name) ? (CARDIO_FIELDS[name] || CARDIO_DEFAULT) : null; }
 
   function colorOf(name){
     var g = PLACE_OF[name];
@@ -472,6 +507,41 @@ button.primary.saved{background:#2E7D4F}
     return row;
   }
 
+  function makeCardio(name, vals){
+    var fields = cardioFields(name), box = document.createElement("div");
+    box.className = "cfields";
+    fields.forEach(function(k){
+      var lab = CARDIO_LABEL[k] || [k, ""];
+      var v = (vals && vals[k] != null) ? vals[k] : "";
+      var lb = document.createElement("label");
+      lb.className = "cf";
+      lb.innerHTML = '<input type="number" inputmode="decimal" min="0" placeholder="–" value="' + v + '">' +
+                     '<b>' + lab[0] + '</b>' + (lab[1] ? '<i>' + lab[1] + '</i>' : '');
+      lb.querySelector("input").setAttribute("data-k", k);
+      lb.addEventListener("input", capture);
+      lb.addEventListener("change", capture);
+      box.appendChild(lb);
+    });
+    return box;
+  }
+
+  function itemSummary(it){
+    if (it.cardio){
+      var ks = cardioFields(it.name) || CARDIO_DEFAULT;
+      return ks.map(function(k){
+        var v = it.cardio[k];
+        if (v == null || v === "") return "";
+        var lab = CARDIO_LABEL[k] || [k, ""];
+        return lab[0] + " " + v + (lab[1] ? " " + lab[1] : "");
+      }).filter(Boolean).join(" · ");
+    }
+    return (it.sets || []).map(function(x){
+      var t = (x.w || "–") + " kg × " + (x.s || "–") + " 组";
+      if (x.r) t += " × " + x.r + " 次";
+      return t;
+    }).join(" · ");
+  }
+
   function renderItems(){
     var box = $("#items"); box.innerHTML = "";
     if (!picked.length){
@@ -490,27 +560,25 @@ button.primary.saved{background:#2E7D4F}
       head.querySelector("button").addEventListener("click", function(){ toggle(name, false); });
       card.appendChild(head);
 
-      if (draftNote[name]){
-        var nt = document.createElement("p");
-        nt.className = "item-note";
-        nt.textContent = draftNote[name];
-        card.appendChild(nt);
+      if (cardioFields(name)){
+        card.appendChild(makeCardio(name, draftCardio[name]));
+      } else {
+        (draft[name] || [{w:"",s:"",r:""}]).forEach(function(x){
+          card.appendChild(makeSet(name, x.w, x.s, x.r));
+        });
+
+        var add = document.createElement("button");
+        add.type = "button"; add.className = "mini";
+        add.textContent = "＋ 加一组";
+        add.style.marginTop = "2px";
+        add.addEventListener("click", function(){
+          capture();
+          draft[name] = draft[name] || [{w:"",s:"",r:""}];
+          draft[name].push({w:"",s:"",r:""});
+          renderItems();
+        });
+        card.appendChild(add);
       }
-
-      (draft[name] || [{w:"",s:"",r:""}]).forEach(function(x){
-        card.appendChild(makeSet(name, x.w, x.s, x.r));
-      });
-
-      var add = document.createElement("button");
-      add.type = "button"; add.className = "mini";
-      add.textContent = "＋ 加一组";
-      add.style.marginTop = "2px";
-      add.addEventListener("click", function(){
-        draft[name] = draft[name] || [{w:"",s:"",r:""}];
-        draft[name].push({w:"",s:"",r:""});
-        renderItems();
-      });
-      card.appendChild(add);
 
       box.appendChild(card);
     });
@@ -524,6 +592,15 @@ button.primary.saved{background:#2E7D4F}
         if (c.querySelector("b") && c.querySelector("b").textContent === name) card = c;
       });
       if (!card) return;
+      var cf = card.querySelector(".cfields");
+      if (cf){
+        var o = {};
+        Array.prototype.forEach.call(cf.querySelectorAll("input"), function(inp){
+          o[inp.getAttribute("data-k")] = inp.value;
+        });
+        draftCardio[name] = o;
+        return;
+      }
       var rows = [], els = card.querySelectorAll(".set");
       Array.prototype.forEach.call(els, function(row){
         rows.push({
@@ -559,14 +636,16 @@ button.primary.saved{background:#2E7D4F}
     var d = findToday(), box = $("#savedBox");
     if (!d){ $("#savedBlock").hidden = true; box.innerHTML=""; return; }
     $("#savedBlock").hidden = false;
-    var head = (d.items||[]).map(function(it){
-      return '<span class="dot" style="background:'+colorOf(it.name)+'"></span><b>'+esc(it.name)+'</b>';
+    var rows = (d.items||[]).map(function(it){
+      return '<div class="srow"><span class="dot" style="background:'+colorOf(it.name)+'"></span>'+
+             '<b>'+esc(it.name)+'</b><span class="sv">'+esc(itemSummary(it))+'</span></div>';
     }).join("");
     box.innerHTML =
       '<div class="summary">'+
-        '<div class="summary-head">'+head+'<time>'+esc(d.savedAt||"")+'</time></div>'+
+        '<div class="summary-head"><time>'+esc(d.savedAt||"")+'</time></div>'+
+        rows+
         (d.note ? '<div class="note">'+esc(d.note)+'</div>' : "")+
-        '<button class="ghost" id="editToday" style="margin-top:15px">修改今天的记录</button>'+
+        '<button class="ghost" id="editToday" style="margin-top:14px">修改今天的记录</button>'+
       '</div>';
     var eb = $("#editToday");
     if (eb) eb.addEventListener("click", function(){ loadFrom(findToday()); openDrawer(false); });
@@ -634,8 +713,9 @@ button.primary.saved{background:#2E7D4F}
       lg.innerHTML = '<p class="empty">暂时空着。</p>';
     } else {
       lg.innerHTML = recent.map(function(w){
-        var total = 0;
+        var total = 0, cmin = 0;
         (w.items||[]).forEach(function(it){
+          if (it.cardio){ cmin += Number(it.cardio.min) || 0; return; }
           (it.sets||[]).forEach(function(s){
             total += (Number(s.w)||0) * (Number(s.s)||0) * (Number(s.r)||1);
           });
@@ -643,11 +723,14 @@ button.primary.saved{background:#2E7D4F}
         var ps = placesOf(w);
         var mm = Number(w.date.slice(5,7)), dd = Number(w.date.slice(8,10));
         var names = (w.items||[]).map(function(it){ return it.name; }).join(" · ");
+        var bits = [];
+        if (total) bits.push(total.toLocaleString()+" kg");
+        if (cmin) bits.push(cmin+" 分钟");
         return '<div class="row">'+
                  '<span class="dot" style="background:'+(PLACE_COLOR[ps[0]]||"#6B7280")+'"></span>'+
                  '<span class="d">'+mm+"/"+dd+'</span>'+
                  '<span class="p">'+esc(names)+'</span>'+
-                 '<span class="v">'+(total? total.toLocaleString()+" kg":"")+'</span>'+
+                 '<span class="v">'+bits.join(" · ")+'</span>'+
                '</div>';
       }).join("");
     }
@@ -657,10 +740,18 @@ button.primary.saved{background:#2E7D4F}
   $("#save").addEventListener("click", function(){
     capture();
     var items = picked.map(function(name){
+      if (cardioFields(name)){
+        var c = {}, src = draftCardio[name] || {};
+        cardioFields(name).forEach(function(k){
+          var v = src[k];
+          if (v !== "" && v != null) c[k] = Number(v) || v;
+        });
+        return { name: name, sets: [], cardio: c };
+      }
       var rows = (draft[name]||[]).map(function(x){
         return { w: Number(x.w)||0, s: Number(x.s)||0, r: Number(x.r)||0 };
       }).filter(function(x){ return x.w || x.s || x.r; });
-      return { name: name, sets: rows, note: draftNote[name] || "" };
+      return { name: name, sets: rows };
     });
     var t = new Date();
     var stamp = String(t.getHours()).padStart(2,"0")+":"+String(t.getMinutes()).padStart(2,"0")+" 保存";
@@ -712,13 +803,13 @@ button.primary.saved{background:#2E7D4F}
 
   /* ================= 启动 ================= */
   function loadFrom(doc){
-    if (!doc){ picked = []; draft = {}; draftNote = {}; $("#note").value = ""; return; }
+    if (!doc){ picked = []; draft = {}; draftCardio = {}; $("#note").value = ""; return; }
     picked = (doc.items||[]).map(function(it){ return it.name; });
     picked.forEach(function(n){ PLACE_OF[n] = PLACE_OF[n] || "其他"; });
-    draft = {}; draftNote = {};
+    draft = {}; draftCardio = {};
     (doc.items||[]).forEach(function(it){
-      draft[it.name] = (it.sets||[]).map(function(s){ return {w:s.w, s:s.s, r:s.r}; });
-      if (it.note) draftNote[it.name] = it.note;
+      if (it.cardio) draftCardio[it.name] = it.cardio;
+      else draft[it.name] = (it.sets||[]).map(function(s){ return {w:s.w, s:s.s, r:s.r}; });
     });
     $("#note").value = doc.note || "";
   }
@@ -817,10 +908,20 @@ button.primary.saved{background:#2E7D4F}
       var tm = body.match(/(\d+(?:\.\d+)?)\s*(?:分钟|min|mins?|分)/i);
       if (tm) mins = parseFloat(tm[1]);
 
-      var ex = body.match(/(?:阻力|档位|速度|坡度|配速)\s*[:：]?\s*(\d+(?:\.\d+)?)\s*(?:档|km\/h|kmh|%|度)?/gi);
-      ex = ex ? ex.map(function(x){ return x.replace(/\s+/g, ""); }) : [];
+      var cardio = {};
+      [[/阻力\s*[:：]?\s*(\d+(?:\.\d+)?)/, "resist"],
+       [/坡度\s*[:：]?\s*(\d+(?:\.\d+)?)/, "incline"],
+       [/速度\s*[:：]?\s*(\d+(?:\.\d+)?)/, "speed"],
+       [/踏频\s*[:：]?\s*(\d+(?:\.\d+)?)/, "rpm"],
+       [/桨频\s*[:：]?\s*(\d+(?:\.\d+)?)/, "spm"],
+       [/档位\s*[:：]?\s*(\d+(?:\.\d+)?)/, "level"],
+       [/距离\s*[:：]?\s*(\d+(?:\.\d+)?)/, "dist"],
+       [/个数\s*[:：]?\s*(\d+(?:\.\d+)?)/, "count"]].forEach(function(p){
+        var mm = body.match(p[0]);
+        if (mm) cardio[p[1]] = parseFloat(mm[1]);
+      });
 
-      out.push({ name:name, weight:weight, sets:sets, reps:reps, mins:mins, extras:ex });
+      out.push({ name:name, weight:weight, sets:sets, reps:reps, mins:mins, cardio:cardio });
     });
     return out;
   }
@@ -840,7 +941,10 @@ button.primary.saved{background:#2E7D4F}
       if (p.sets != null && p.reps != null) detail.push(p.sets + " 组 × " + p.reps + " 次");
       else if (p.sets != null) detail.push(p.sets + " 组");
       if (p.mins != null) detail.push(p.mins + " 分钟");
-      if (p.extras && p.extras.length) detail.push(p.extras.join(" "));
+      if (p.cardio) Object.keys(p.cardio).forEach(function(k){
+        var lab = CARDIO_LABEL[k] || [k, ""];
+        detail.push(lab[0] + " " + p.cardio[k] + (lab[1] ? " " + lab[1] : ""));
+      });
       var map = lib ? '<span class="map">→ ' + esc(lib) + '</span>'
                     : '<span class="map new">清单里没有，按原名记</span>';
       return '<div class="prow"><span class="pn">' + esc(p.name) + '</span>' + map +
@@ -860,14 +964,14 @@ button.primary.saved{background:#2E7D4F}
         if (custom.indexOf(lib) < 0) custom.push(lib);
       }
       if (picked.indexOf(lib) < 0) picked.push(lib);
-      if (!draft[lib]) draft[lib] = [];
 
-      if (p.mins != null){
-        draft[lib].push({ w:"", s:"", r:"" });
-        var bits = [p.mins + " 分钟"];
-        if (p.extras && p.extras.length) bits = bits.concat(p.extras);
-        draftNote[lib] = bits.join(" · ");
+      if (cardioFields(lib)){
+        var c = {};
+        if (p.mins != null) c.min = p.mins;
+        if (p.cardio) Object.keys(p.cardio).forEach(function(k){ c[k] = p.cardio[k]; });
+        draftCardio[lib] = c;
       } else {
+        if (!draft[lib]) draft[lib] = [];
         draft[lib].push({
           w: p.weight != null ? p.weight : "",
           s: p.sets   != null ? p.sets   : "",
