@@ -1,0 +1,914 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>训练日志</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --paper:#EBEDF0;
+  --card:#FFFFFF;
+  --ink:#181B20;
+  --ink2:#5C636C;
+  --ink3:#9AA1AA;
+  --line:#E3E6EB;
+  --field:#F5F6F8;
+  --red:#C1352B;
+  --focus:#181B20;
+  --r:13px;
+}
+html{-webkit-text-size-adjust:100%}
+body{
+  background:var(--paper);color:var(--ink);
+  font:16px/1.5 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei","Segoe UI",Roboto,sans-serif;
+  -webkit-font-smoothing:antialiased;
+  display:flex;justify-content:center;min-height:100vh;
+}
+.app{width:100%;max-width:460px;background:var(--card);min-height:100vh;padding:26px 20px 48px}
+
+.top{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:22px}
+.top h1{font-size:19px;font-weight:600;letter-spacing:.01em}
+.top time{font-size:13px;color:var(--ink3);font-variant-numeric:tabular-nums}
+
+.tabs{display:flex;gap:4px;background:var(--field);border-radius:10px;padding:4px;margin-bottom:26px}
+.tabs button{flex:1;border:0;background:none;font:inherit;font-size:14px;color:var(--ink2);
+  padding:8px 0;border-radius:7px;cursor:pointer;transition:background .15s,color .15s}
+.tabs button[aria-selected="true"]{background:var(--card);color:var(--ink);font-weight:600;box-shadow:0 1px 3px rgba(20,24,30,.1)}
+
+.label{font-size:12px;font-weight:600;letter-spacing:.06em;color:var(--ink3);margin-bottom:10px}
+.block{margin-bottom:26px}
+.hint{font-size:13px;color:var(--ink3);margin-top:10px}
+button.ghost{border:1px dashed var(--line);background:none;font:inherit;font-size:13.5px;color:var(--ink2);
+  padding:8px 14px;border-radius:9px;cursor:pointer;transition:border-color .15s,color .15s}
+button.ghost:hover{border-color:var(--ink3);color:var(--ink)}
+button.ghost:focus-visible,button.primary:focus-visible,.chip:focus-visible,.gname:focus-visible,
+input:focus-visible,textarea:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+
+/* ---------- 搜索 ---------- */
+.searchbox{position:relative;margin-bottom:18px}
+.searchbox svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:16px;height:16px;
+  stroke:var(--ink3);fill:none;stroke-width:2;pointer-events:none}
+#search{width:100%;border:1px solid var(--line);background:var(--field);border-radius:10px;
+  padding:11px 13px 11px 36px;font:inherit;font-size:14.5px;color:var(--ink)}
+#search::placeholder{color:var(--ink3)}
+#search::-webkit-search-cancel-button{-webkit-appearance:none}
+
+/* ---------- 器械库 ---------- */
+.grp{margin-bottom:16px}
+.gname{display:inline-flex;align-items:center;gap:7px;border:0;background:none;font:inherit;
+  font-size:12px;font-weight:700;letter-spacing:.06em;color:var(--ink3);
+  padding:3px 8px 3px 4px;margin:0 0 8px -4px;border-radius:7px;cursor:pointer;transition:background .15s,color .15s}
+.gname .gdot{width:8px;height:8px;border-radius:50%;background:var(--gc);opacity:.42;transition:opacity .15s}
+.gname:hover{background:var(--field);color:var(--ink2)}
+.gname[aria-pressed="true"]{color:var(--gc);background:transparent}
+.gname[aria-pressed="true"] .gdot{opacity:1}
+.chips{display:flex;flex-wrap:wrap;gap:7px}
+.chip{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);background:var(--card);
+  font:inherit;font-size:14px;color:var(--ink2);padding:7px 13px;border-radius:999px;cursor:pointer;
+  transition:border-color .15s,background .15s,color .15s}
+.chip .dot{width:7px;height:7px;border-radius:50%;flex:none;background:currentColor;opacity:.34}
+.chip[aria-pressed="true"]{color:var(--cc);border-color:currentColor}
+.chip[aria-pressed="true"] .dot{opacity:1;background:var(--cc)}
+.noresult{font-size:14px;color:var(--ink3);padding:6px 0 2px}
+
+/* ---------- 已选器械 ---------- */
+.item{border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:10px}
+.item-head{display:flex;align-items:center;gap:9px;margin-bottom:12px}
+.item-head .dot{width:10px;height:10px;border-radius:50%;flex:none;background:var(--cc)}
+.item-head b{font-size:15px;font-weight:600}
+.item-head button{margin-left:auto;border:0;background:none;color:var(--ink3);font:inherit;
+  font-size:14px;cursor:pointer;padding:2px 0;line-height:1;transition:color .15s}
+.item-head button:hover{color:var(--red)}
+.item-note{font-size:12.5px;color:var(--ink3);margin:-6px 0 11px 19px}
+.set{display:flex;align-items:center;gap:9px;padding:10px 12px;background:var(--field);border-radius:10px;margin-bottom:6px}
+.set input{border:0;background:none;font:inherit;color:var(--ink);font-variant-numeric:tabular-nums;
+  width:100%;min-width:0;padding:0}
+.set .w{font-size:22px;font-weight:650;letter-spacing:-.01em}
+.set .s,.set .r{font-size:15px;font-weight:600;text-align:center;width:34px}
+.set .u{font-size:11.5px;color:var(--ink3);flex:none}
+.set .op{color:var(--ink3);font-size:13px;flex:none}
+.set .del{border:0;background:none;color:var(--ink3);font:inherit;font-size:14px;cursor:pointer;
+  flex:none;padding:4px 2px;line-height:1;transition:color .15s}
+.set .del:hover{color:var(--red)}
+.set:focus-within{background:#fff;box-shadow:inset 0 0 0 1px var(--line)}
+.mini{font-size:13px;color:var(--ink3);border:0;background:none;font-family:inherit;
+  padding:4px 2px;cursor:pointer;transition:color .15s}
+.mini:hover{color:var(--ink)}
+
+textarea{width:100%;min-height:76px;resize:vertical;border:0;background:var(--field);
+  border-radius:var(--r);padding:13px 14px;font:inherit;font-size:15px;color:var(--ink)}
+textarea::placeholder{color:var(--ink3)}
+
+button.primary{width:100%;border:0;border-radius:12px;background:var(--ink);color:#fff;
+  font:inherit;font-size:15.5px;font-weight:600;padding:15px 0;cursor:pointer;margin-top:6px;transition:opacity .15s}
+button.primary:hover{opacity:.88}
+button.primary.saved{background:#2E7D4F}
+
+.summary{border:1px solid var(--line);border-radius:var(--r);padding:16px}
+.summary-head{display:flex;align-items:center;gap:8px;margin-bottom:11px;flex-wrap:wrap}
+.summary-head .dot{width:8px;height:8px;border-radius:50%;flex:none}
+.summary-head b{font-size:14.5px;font-weight:500}
+.summary-head time{margin-left:auto;font-size:12.5px;color:var(--ink3);font-variant-numeric:tabular-nums}
+.summary .note{margin-top:12px;font-size:14px;color:var(--ink2);white-space:pre-wrap}
+
+.stat-figure{font-size:52px;font-weight:680;letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1.05}
+.stat-figure small{font-size:16px;font-weight:500;color:var(--ink3);margin-left:4px;letter-spacing:0}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.grid i{display:block;aspect-ratio:1;border-radius:3px;background:var(--field)}
+.grid i[data-on="1"]{background:var(--gc)}
+.bars{display:flex;flex-direction:column;gap:11px}
+.bar{display:flex;align-items:center;gap:11px;font-size:14px}
+.bar .name{width:42px;flex:none;color:var(--ink2)}
+.bar .track{flex:1;height:8px;background:var(--field);border-radius:99px;overflow:hidden}
+.bar .track i{display:block;height:100%;border-radius:99px;background:var(--gc);transition:width .35s ease}
+.bar .n{width:22px;text-align:right;flex:none;color:var(--ink3);font-variant-numeric:tabular-nums;font-size:13px}
+.log-list{border-top:1px solid var(--line)}
+.log-list .row{display:flex;align-items:baseline;gap:10px;padding:12px 0;border-bottom:1px solid var(--line)}
+.log-list .row .dot{width:8px;height:8px;border-radius:50%;flex:none;transform:translateY(-1px)}
+.log-list .row .d{font-size:12.5px;color:var(--ink3);font-variant-numeric:tabular-nums;width:52px;flex:none}
+.log-list .row .p{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.log-list .row .v{margin-left:auto;font-size:12.5px;color:var(--ink3);font-variant-numeric:tabular-nums;flex:none;padding-left:8px}
+.empty{text-align:center;color:var(--ink3);font-size:14px;padding:40px 20px;line-height:1.7}
+
+/* ---------- 导入 ---------- */
+.import-open{width:100%;display:flex;align-items:center;gap:9px;border:1px solid var(--line);
+  background:var(--field);border-radius:10px;padding:12px 14px;font:inherit;font-size:14px;
+  color:var(--ink2);cursor:pointer;margin-bottom:18px;text-align:left;transition:border-color .15s,color .15s}
+.import-open:hover{border-color:var(--ink3);color:var(--ink)}
+.import-open b{font-weight:600;color:var(--ink);margin-right:auto}
+.sheet{position:fixed;inset:0;background:rgba(20,24,30,.42);z-index:50;display:flex;
+  align-items:flex-end;justify-content:center}
+.sheet[hidden]{display:none}
+.sheet-in{width:100%;max-width:460px;background:var(--card);border-radius:18px 18px 0 0;
+  padding:20px 20px 26px;max-height:94vh;overflow:auto}
+.sheet-top{display:flex;align-items:center;margin-bottom:16px}
+.sheet-top b{font-size:16px;font-weight:600}
+.sheet-top button{margin-left:auto;border:0;background:none;font:inherit;font-size:16px;
+  color:var(--ink3);cursor:pointer;line-height:1;padding:2px 0}
+#importText{width:100%;min-height:170px;resize:vertical;border:1px solid var(--line);
+  background:var(--field);border-radius:var(--r);padding:13px 14px;font:inherit;font-size:14px;
+  color:var(--ink);line-height:1.65}
+#importText::placeholder{color:var(--ink3)}
+.prow{display:flex;align-items:baseline;gap:8px;padding:10px 0;border-bottom:1px solid var(--line);
+  font-size:14px;flex-wrap:wrap}
+.prow .pn{font-weight:600}
+.prow .map{font-size:12px;color:#2E7D4F;flex:none}
+.prow .map.new{color:var(--ink3)}
+.prow .pv{margin-left:auto;color:var(--ink2);font-variant-numeric:tabular-nums;font-size:13px}
+.sheet-actions{display:flex;gap:10px;margin-top:20px}
+.sheet-actions .ghost{flex:1;border-style:solid;padding:13px 0;text-align:center;font-size:14.5px}
+.sheet-actions .primary{flex:1.4;margin:0;padding:14px 0}
+.sheet-actions .primary:disabled{opacity:.38;cursor:default}
+.parse-note{font-size:13px;color:var(--ink3);margin-top:14px}
+.data-actions{display:flex;gap:10px;margin-bottom:10px}
+.data-actions .ghost{flex:1;border-style:solid;text-align:center;padding:12px 0}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<main class="app">
+
+  <header class="top">
+    <h1>训练日志</h1>
+    <time id="today"></time>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button role="tab" data-view="log" aria-selected="true">记录</button>
+    <button role="tab" data-view="stats" aria-selected="false">统计</button>
+  </nav>
+
+  <section id="view-log">
+    <button class="import-open" id="openImport" type="button">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6v11.2M8.4 11.2l3.6 3.6 3.6-3.6"/><path d="M5.4 15.6v3a1.8 1.8 0 0 0 1.8 1.8h9.6a1.8 1.8 0 0 0 1.8-1.8v-3"/></svg>
+      <b>从文本导入今天的计划</b>
+    </button>
+    <div class="block">
+      <p class="label">今天练什么</p>
+      <div class="searchbox">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg>
+        <input id="search" type="search" placeholder="搜器械，比如「推胸」「下拉」" autocomplete="off">
+      </div>
+      <div id="library"></div>
+      <p class="hint"><button class="ghost" id="addMachine">＋ 添加清单里没有的</button></p>
+    </div>
+
+    <div class="block" id="entryBlock" hidden>
+      <p class="label">练了什么</p>
+      <div id="items"></div>
+
+      <p class="label" style="margin:26px 0 10px">感受</p>
+      <textarea id="note" placeholder="状态怎么样，有没有哪里不舒服…"></textarea>
+
+      <button class="primary" id="save" style="margin-top:18px">保存今天的训练</button>
+    </div>
+
+    <div class="block" id="savedBlock" hidden>
+      <p class="label">今天</p>
+      <div id="savedBox"></div>
+    </div>
+  </section>
+
+  <section id="view-stats" hidden>
+    <div class="block">
+      <p class="label">本月练了</p>
+      <p class="stat-figure" id="mCount">0<small>天</small></p>
+    </div>
+    <div class="block">
+      <p class="label">最近八周</p>
+      <div class="grid" id="grid"></div>
+    </div>
+    <div class="block">
+      <p class="label">各部位练了几次</p>
+      <div class="bars" id="bars"></div>
+    </div>
+    <div class="block">
+      <p class="label">最近的记录</p>
+      <div class="log-list" id="logs"></div>
+    </div>
+
+    <div class="block">
+      <p class="label">数据</p>
+      <div class="data-actions">
+        <button class="ghost" type="button" id="exportBtn">导出备份</button>
+        <button class="ghost" type="button" id="importBtn">导入备份</button>
+      </div>
+      <p class="hint" id="dataMsg">记录存在这台设备的浏览器里。换了手机或清了缓存，用导出的文件导回来就行。</p>
+    </div>
+  </section>
+
+</main>
+
+<div class="sheet" id="sheet" hidden>
+  <div class="sheet-in">
+    <div class="sheet-top">
+      <b>导入今天的计划</b>
+      <button type="button" id="closeImport" title="关闭">✕</button>
+    </div>
+    <textarea id="importText" placeholder="把计划整段粘进来，比如：&#10;&#10;1. 器械腿举: 3组×12次 (45kg，离心慢放)&#10;2. 坐姿腿弯举: 3组×12次 (40kg)&#10;有氧: 椭圆机10分钟 (阻力8档)"></textarea>
+    <div id="preview"></div>
+    <div class="sheet-actions">
+      <button class="ghost" type="button" id="parseBtn">解析</button>
+      <button class="primary" type="button" id="applyBtn" disabled>填入今天的记录</button>
+    </div>
+    <p class="parse-note" id="parseNote">括号里的动作指导会被忽略，只取器械名、重量、组数、次数。</p>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* 杠铃片标准配色：红25 / 蓝20 / 黄15 / 绿10 / 银5 / 黑2.5，其余部位用补充色 */
+  var PLACE_COLOR = {
+    "胸":"#C1352B", "背":"#20509E", "腿":"#A97A0B", "肩":"#2E7D4F",
+    "手臂":"#6B7280", "核心":"#3A3F45", "有氧":"#0E7C86", "其他":"#7A4E9B"
+  };
+
+  /* 健身房常见器械：固定器械 + 自由重量 */
+  var LIBRARY = {
+    "胸": ["坐姿推胸机","上斜推胸机","蝴蝶机","龙门架夹胸","史密斯机","双杠臂屈伸","杠铃卧推","哑铃卧推","哑铃飞鸟"],
+    "背": ["高位下拉","坐姿划船机","器械划船","反向飞鸟机","引体向上","杠铃划船","哑铃单臂划船","坐姿直臂下压","T杠划船"],
+    "腿": ["腿举机","腿屈伸机","腿弯举机","哈克深蹲","史密斯深蹲","杠铃深蹲","箭步蹲","臀推机","髋内收机","髋外展机","坐姿提踵机"],
+    "肩": ["肩推机","侧平举机","反向蝴蝶机","杠铃推举","哑铃推举","哑铃侧平举","面拉"],
+    "手臂": ["二头弯举机","牧师凳弯举","三头臂屈伸机","绳索下压","哑铃弯举","锤式弯举","窄距卧推"],
+    "核心": ["卷腹机","罗马椅","悬垂举腿","绳索卷腹","平板支撑"],
+    "有氧": ["跑步机","椭圆机","动感单车","划船机","登山机","踏步机","跳绳"],
+    "其他": ["壶铃","弹力带","TRX","药球","战绳"]
+  };
+
+  var FALLBACK = ["#C1352B","#20509E","#A97A0B","#2E7D4F","#6B7280","#3A3F45","#0E7C86","#7A4E9B"];
+
+  var store = {
+    get: function(k,d){ try{ var v=JSON.parse(localStorage.getItem(k)); return v===null?d:v; }catch(e){ return d; } },
+    set: function(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
+  };
+
+  var custom  = store.get("custom", []);      // 用户自己加的器械
+  var workouts= store.get("workouts", []);
+  var picked  = [];                            // 今天选中的器械（有序）
+  var draft   = {};                            // 器械名 -> [{w,s,r}]
+  var draftNote = {};                          // 器械名 -> 备注（有氧的时间/阻力等）
+  var editing = false;                         // 是否处于编辑态；否则显示今日摘要
+
+  var $ = function(s){ return document.querySelector(s); };
+
+  /* 器械 -> 部位 */
+  var PLACE_OF = {};
+  Object.keys(LIBRARY).forEach(function(g){
+    LIBRARY[g].forEach(function(m){ PLACE_OF[m] = g; });
+  });
+  custom.forEach(function(m){ if(!PLACE_OF[m]) PLACE_OF[m] = "其他"; });
+
+  function colorOf(name){
+    var g = PLACE_OF[name];
+    if (g && PLACE_COLOR[g]) return PLACE_COLOR[g];
+    var i = Object.keys(PLACE_OF).indexOf(name);
+    return FALLBACK[(i<0?0:i) % FALLBACK.length];
+  }
+  function keyOf(d){
+    return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+  }
+  var TODAY = keyOf(new Date());
+
+  (function(){
+    var d=new Date(), w="日一二三四五六"[d.getDay()];
+    $("#today").textContent = (d.getMonth()+1)+"月"+d.getDate()+"日 星期"+w;
+  })();
+
+  function saveAll(){ store.set("workouts",workouts); store.set("custom",custom); }
+  function findToday(){ for(var i=0;i<workouts.length;i++) if(workouts[i].date===TODAY) return workouts[i]; return null; }
+
+  /* ================= 器械库 ================= */
+  function groupsToShow(){
+    var list = Object.keys(LIBRARY).map(function(g){ return [g, LIBRARY[g].slice()]; });
+    if (custom.length) list.push(["其他", list[list.length-1][0]==="其他" ? list[list.length-1][1].concat(custom) : custom.slice()]);
+    // 自定义器械去重后并入「其他」
+    var seen = {};
+    list.forEach(function(pair){ pair[1] = pair[1].filter(function(m){ if(seen[m]) return false; seen[m]=1; return true; }); });
+    return list.filter(function(pair){ return pair[1].length; });
+  }
+
+  function renderLibrary(){
+    var q = $("#search").value.trim().toLowerCase();
+    var box = $("#library"); box.innerHTML = "";
+    var any = false;
+
+    groupsToShow().forEach(function(pair){
+      var g = pair[0], names = pair[1];
+      var grpHit = (g.toLowerCase().indexOf(q) >= 0);
+      var hits = q ? names.filter(function(m){ return grpHit || m.toLowerCase().indexOf(q) >= 0; }) : names;
+      if (!hits.length) return;
+      any = true;
+
+      var wrap = document.createElement("div");
+      wrap.className = "grp";
+      wrap.style.setProperty("--gc", PLACE_COLOR[g] || "#6B7280");
+
+      var h = document.createElement("button");
+      h.type = "button"; h.className = "gname";
+      h.setAttribute("aria-pressed", picked.indexOf(g) >= 0 ? "true" : "false");
+      h.innerHTML = '<span class="gdot"></span>' + g;
+      h.title = "只记「" + g + "」，不细分器械";
+      h.addEventListener("click", function(){ toggle(g); });
+      wrap.appendChild(h);
+
+      var chips = document.createElement("div");
+      chips.className = "chips";
+      hits.forEach(function(m){
+        var c = document.createElement("button");
+        c.type = "button"; c.className = "chip";
+        c.style.setProperty("--cc", colorOf(m));
+        c.setAttribute("aria-pressed", picked.indexOf(m) >= 0 ? "true" : "false");
+        c.innerHTML = '<span class="dot"></span>' + m;
+        c.addEventListener("click", function(){ toggle(m); });
+        chips.appendChild(c);
+      });
+      wrap.appendChild(chips);
+      box.appendChild(wrap);
+    });
+
+    if (!any){
+      var p = document.createElement("p");
+      p.className = "noresult";
+      p.textContent = "清单里没有「" + $("#search").value.trim() + "」，可以用下面的按钮加上。";
+      box.appendChild(p);
+    }
+  }
+
+  function toggle(name){
+    var i = picked.indexOf(name);
+    if (i >= 0){ picked.splice(i,1); }
+    else {
+      picked.push(name);
+      if (!draft[name]) draft[name] = [{w:"", s:"", r:""}];
+    }
+    editing = true;
+    renderLibrary();
+    syncEntry();
+  }
+
+  /* ================= 记录区 ================= */
+  function makeSet(name, w, s, r){
+    var row = document.createElement("div");
+    row.className = "set";
+    row.innerHTML =
+      '<input class="w" type="number" inputmode="decimal" min="0" step="2.5" placeholder="0" value="'+(w||"")+'">'+
+      '<span class="u">kg</span><span class="op">×</span>'+
+      '<input class="s" type="number" inputmode="numeric" min="0" placeholder="0" value="'+(s||"")+'">'+
+      '<span class="u">组</span><span class="op">×</span>'+
+      '<input class="r" type="number" inputmode="numeric" min="0" placeholder="0" value="'+(r||"")+'">'+
+      '<span class="u">次</span>'+
+      '<button class="del" type="button" title="删掉这一行">✕</button>';
+    row.querySelector(".del").addEventListener("click", function(){
+      var list = draft[name];
+      var idx = Array.prototype.indexOf.call(row.parentNode.children, row);
+      if (list.length > 1){ list.splice(idx,1); row.remove(); }
+      else { row.querySelector(".w").value=""; row.querySelector(".s").value=""; row.querySelector(".r").value=""; }
+      capture();
+    });
+    ["input","change"].forEach(function(ev){ row.addEventListener(ev, capture); });
+    return row;
+  }
+
+  function renderItems(){
+    var box = $("#items"); box.innerHTML = "";
+    if (!picked.length){
+      box.innerHTML = '<p class="noresult">从上面点器械，记下今天练的。</p>';
+      return;
+    }
+    picked.forEach(function(name){
+      var card = document.createElement("div");
+      card.className = "item";
+      card.style.setProperty("--cc", colorOf(name));
+
+      var head = document.createElement("div");
+      head.className = "item-head";
+      head.innerHTML = '<span class="dot"></span><b></b><button type="button" title="今天不练这个">✕</button>';
+      head.querySelector("b").textContent = name;
+      head.querySelector("button").addEventListener("click", function(){ toggle(name); });
+      card.appendChild(head);
+
+      if (draftNote[name]){
+        var nt = document.createElement("p");
+        nt.className = "item-note";
+        nt.textContent = draftNote[name];
+        card.appendChild(nt);
+      }
+
+      (draft[name] || [{w:"",s:"",r:""}]).forEach(function(x){
+        card.appendChild(makeSet(name, x.w, x.s, x.r));
+      });
+
+      var add = document.createElement("button");
+      add.type = "button"; add.className = "mini";
+      add.textContent = "＋ 加一组";
+      add.style.marginTop = "2px";
+      add.addEventListener("click", function(){
+        draft[name] = draft[name] || [{w:"",s:"",r:""}];
+        draft[name].push({w:"",s:"",r:""});
+        renderItems();
+      });
+      card.appendChild(add);
+
+      box.appendChild(card);
+    });
+  }
+
+  /* 把输入框里的值读回 draft */
+  function capture(){
+    picked.forEach(function(name){
+      var card = null;
+      Array.prototype.forEach.call($("#items").children, function(c){
+        if (c.querySelector("b") && c.querySelector("b").textContent === name) card = c;
+      });
+      if (!card) return;
+      var rows = [], els = card.querySelectorAll(".set");
+      Array.prototype.forEach.call(els, function(row){
+        rows.push({
+          w: row.querySelector(".w").value,
+          s: row.querySelector(".s").value,
+          r: row.querySelector(".r").value
+        });
+      });
+      draft[name] = rows;
+    });
+  }
+
+  function syncEntry(){
+    var doc = findToday();
+    $("#entryBlock").hidden = !editing;
+    $("#savedBlock").hidden = editing || !doc;
+    if (editing){
+      renderItems();
+      var btn = $("#save"), none = picked.length === 0;
+      btn.textContent = "保存今天的训练";
+      btn.classList.remove("saved");
+      btn.disabled = none;
+      btn.style.opacity = none ? ".38" : "";
+      btn.style.cursor  = none ? "default" : "";
+    } else {
+      renderSaved();
+    }
+  }
+
+  function renderSaved(){
+    var d = findToday(), box = $("#savedBox");
+    if (!d){ $("#savedBlock").hidden = true; box.innerHTML=""; return; }
+    $("#savedBlock").hidden = false;
+    var head = (d.items||[]).map(function(it){
+      return '<span class="dot" style="background:'+colorOf(it.name)+'"></span><b>'+esc(it.name)+'</b>';
+    }).join("");
+    box.innerHTML =
+      '<div class="summary">'+
+        '<div class="summary-head">'+head+'<time>'+esc(d.savedAt||"")+'</time></div>'+
+        (d.note ? '<div class="note">'+esc(d.note)+'</div>' : "")+
+        '<button class="ghost" id="editToday" style="margin-top:15px">修改今天的记录</button>'+
+      '</div>';
+    var eb = $("#editToday");
+    if (eb) eb.addEventListener("click", function(){ editing = true; renderLibrary(); syncEntry(); });
+  }
+
+  function esc(s){ return String(s).replace(/[&<>"]/g, function(c){
+    return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
+
+  /* ================= 统计 ================= */
+  function placesOf(w){
+    var set = {};
+    (w.items||[]).forEach(function(it){
+      var g = it.name;
+      if (PLACE_OF[g]) g = PLACE_OF[g];
+      set[g] = 1;
+    });
+    return Object.keys(set);
+  }
+
+  function renderStats(){
+    var now = new Date();
+    var ym = now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0");
+    $("#mCount").innerHTML = workouts.filter(function(w){ return w.date.indexOf(ym)===0; }).length + '<small>天</small>';
+
+    var byDate = {};
+    workouts.forEach(function(w){ byDate[w.date] = w; });
+
+    var g = $("#grid"); g.innerHTML = "";
+    for (var i=55;i>=0;i--){
+      var d = new Date(); d.setDate(d.getDate()-i);
+      var k = keyOf(d), cell = document.createElement("i");
+      if (byDate[k]){
+        cell.setAttribute("data-on","1");
+        var ps = placesOf(byDate[k]);
+        cell.style.setProperty("--gc", ps.length ? (PLACE_COLOR[ps[0]]||"#6B7280") : "#C1352B");
+      }
+      cell.title = (d.getMonth()+1)+"月"+d.getDate()+"日" + (byDate[k] ? " · "+placesOf(byDate[k]).join("/") : "");
+      g.appendChild(cell);
+    }
+
+    var counts = {};
+    workouts.forEach(function(w){
+      placesOf(w).forEach(function(p){ counts[p] = (counts[p]||0)+1; });
+    });
+    var list = Object.keys(counts).map(function(k){ return [k,counts[k]]; })
+                     .sort(function(a,b){ return b[1]-a[1]; });
+    var box = $("#bars");
+    if (!list.length){
+      box.innerHTML = '<p class="empty">还没有记录。<br>去「记录」页记下第一次训练。</p>';
+    } else {
+      var max = list[0][1];
+      box.innerHTML = list.map(function(x){
+        var pct = Math.max(6, Math.round(x[1]/max*100));
+        return '<div class="bar" style="--gc:'+(PLACE_COLOR[x[0]]||"#6B7280")+'">'+
+                 '<span class="name">'+x[0]+'</span>'+
+                 '<span class="track"><i style="width:'+pct+'%"></i></span>'+
+                 '<span class="n">'+x[1]+'</span>'+
+               '</div>';
+      }).join("");
+    }
+
+    var recent = workouts.slice().sort(function(a,b){ return a.date<b.date?1:-1; }).slice(0,8);
+    var lg = $("#logs");
+    if (!recent.length){
+      lg.innerHTML = '<p class="empty">暂时空着。</p>';
+    } else {
+      lg.innerHTML = recent.map(function(w){
+        var total = 0;
+        (w.items||[]).forEach(function(it){
+          (it.sets||[]).forEach(function(s){
+            total += (Number(s.w)||0) * (Number(s.s)||0) * (Number(s.r)||1);
+          });
+        });
+        var ps = placesOf(w);
+        var mm = Number(w.date.slice(5,7)), dd = Number(w.date.slice(8,10));
+        var names = (w.items||[]).map(function(it){ return it.name; }).join(" · ");
+        return '<div class="row">'+
+                 '<span class="dot" style="background:'+(PLACE_COLOR[ps[0]]||"#6B7280")+'"></span>'+
+                 '<span class="d">'+mm+"/"+dd+'</span>'+
+                 '<span class="p">'+esc(names)+'</span>'+
+                 '<span class="v">'+(total? total.toLocaleString()+" kg":"")+'</span>'+
+               '</div>';
+      }).join("");
+    }
+  }
+
+  /* ================= 保存 ================= */
+  $("#save").addEventListener("click", function(){
+    capture();
+    var items = picked.map(function(name){
+      var rows = (draft[name]||[]).map(function(x){
+        return { w: Number(x.w)||0, s: Number(x.s)||0, r: Number(x.r)||0 };
+      }).filter(function(x){ return x.w || x.s || x.r; });
+      return { name: name, sets: rows, note: draftNote[name] || "" };
+    });
+    var t = new Date();
+    var stamp = String(t.getHours()).padStart(2,"0")+":"+String(t.getMinutes()).padStart(2,"0")+" 保存";
+    var d = findToday();
+    if (d){ d.items = items; d.note = $("#note").value.trim(); d.savedAt = stamp; }
+    else workouts.push({ date:TODAY, items:items, note:$("#note").value.trim(), savedAt:stamp });
+
+    saveAll();
+    renderStats();
+
+    var btn = $("#save");
+    btn.textContent = "已保存 ✓";
+    btn.classList.add("saved");
+    setTimeout(function(){
+      editing = false;
+      loadFrom(findToday());
+      renderLibrary();
+      syncEntry();
+    }, 620);
+  });
+
+  $("#addMachine").addEventListener("click", function(){
+    var name = prompt("器械叫什么？（例如：坐姿腹肌训练机）");
+    if (!name) return;
+    name = name.trim();
+    if (!name || PLACE_OF[name]) return;
+    custom.push(name); PLACE_OF[name] = "其他";
+    saveAll();
+    toggle(name);
+    $("#search").value = "";
+  });
+
+  $("#search").addEventListener("input", renderLibrary);
+
+  /* ================= 切换 ================= */
+  Array.prototype.forEach.call(document.querySelectorAll(".tabs button"), function(b){
+    b.addEventListener("click", function(){
+      Array.prototype.forEach.call(document.querySelectorAll(".tabs button"), function(x){
+        x.setAttribute("aria-selected", String(x===b));
+      });
+      var v = b.getAttribute("data-view");
+      $("#view-log").hidden   = v!=="log";
+      $("#view-stats").hidden = v!=="stats";
+      if (v==="stats") renderStats();
+    });
+  });
+
+  /* ================= 启动 ================= */
+  function loadFrom(doc){
+    if (!doc){ picked = []; draft = {}; draftNote = {}; $("#note").value = ""; return; }
+    picked = (doc.items||[]).map(function(it){ return it.name; });
+    picked.forEach(function(n){ PLACE_OF[n] = PLACE_OF[n] || "其他"; });
+    draft = {}; draftNote = {};
+    (doc.items||[]).forEach(function(it){
+      draft[it.name] = (it.sets||[]).map(function(s){ return {w:s.w, s:s.s, r:s.r}; });
+      if (it.note) draftNote[it.name] = it.note;
+    });
+    $("#note").value = doc.note || "";
+  }
+
+  /* ================= 文本导入 ================= */
+  var ALL_NAMES = [];
+  Object.keys(LIBRARY).forEach(function(g){
+    LIBRARY[g].forEach(function(m){ ALL_NAMES.push(m); });
+  });
+
+  /* 只放高把握的对照：你说「器械腿举」，它认得出是「腿举机」 */
+  var ALIAS = {
+    "器械腿举":"腿举机", "腿举":"腿举机", "倒蹬":"腿举机",
+    "器械腿弯举":"腿弯举机", "腿弯举":"腿弯举机", "俯卧腿弯举":"腿弯举机",
+    "腿屈伸":"腿屈伸机",
+    "器械夹腿":"髋内收机", "夹腿":"髋内收机", "大腿内收":"髋内收机",
+    "器械外展":"髋外展机", "大腿外展":"髋外展机", "臀中肌":"髋外展机",
+    "器械推胸":"坐姿推胸机", "推胸":"坐姿推胸机",
+    "器械夹胸":"蝴蝶机", "蝴蝶机夹胸":"蝴蝶机",
+    "高位下拉机":"高位下拉",
+    "坐姿划船":"坐姿划船机",
+    "器械提踵":"坐姿提踵机",
+    "器械臀推":"臀推机"
+  };
+
+  function normName(s){
+    return String(s)
+      .replace(/[（(][^)）]*[)）]/g, "")
+      .replace(/器械|训练机|器材|坐姿|站姿|俯身|俯卧|平躺|仰卧|辅助|固定/g, "")
+      .replace(/[机台器]$/g, "")
+      .replace(/[\s·・\-—_/]/g, "")
+      .toLowerCase();
+  }
+
+  function matchMachine(raw){
+    var name = String(raw).trim();
+    if (ALL_NAMES.indexOf(name) >= 0) return name;
+    if (ALIAS[name] && ALL_NAMES.indexOf(ALIAS[name]) >= 0) return ALIAS[name];
+
+    var n = normName(name), i, ln;
+    if (n){
+      for (i=0;i<ALL_NAMES.length;i++) if (normName(ALL_NAMES[i]) === n) return ALL_NAMES[i];
+      for (i=0;i<ALL_NAMES.length;i++){
+        ln = normName(ALL_NAMES[i]);
+        if (ln && (ln.indexOf(n) >= 0 || n.indexOf(ln) >= 0)) return ALL_NAMES[i];
+      }
+    }
+    // 还有括号里的词可以试：器械夹腿(内收) -> 内收 -> 髋内收机
+    var pm = name.match(/[（(]([^)）]*)[)）]/);
+    if (pm){
+      var parts = pm[1].split(/[\/、，,]/);
+      for (var k=0;k<parts.length;k++){
+        var inner = parts[k].trim();
+        if (!inner) continue;
+        if (ALIAS[inner] && ALL_NAMES.indexOf(ALIAS[inner]) >= 0) return ALIAS[inner];
+        var inn = normName(inner);
+        if (!inn) continue;
+        for (i=0;i<ALL_NAMES.length;i++){
+          ln = normName(ALL_NAMES[i]);
+          if (ln && (ln.indexOf(inn) >= 0 || inn.indexOf(ln) >= 0)) return ALL_NAMES[i];
+        }
+      }
+    }
+    return null;
+  }
+
+  /* 宽进严出：容得下各种写法，但只取该取的字段 */
+  function parsePlan(text){
+    var out = [];
+    text.split(/\r?\n/).forEach(function(raw){
+      var line = raw.trim();
+      if (!line) return;
+      line = line.replace(/^\s*(?:\d+\s*[.、)．]\s*|[-•*·]\s*)+/, "");
+      if (!line) return;
+
+      var m = line.match(/\d/);
+      if (!m) return;
+      var head = line.slice(0, m.index);
+      var body = line.slice(m.index);
+
+      var name = head.replace(/[：:=\-—，,、\s]+$/, "").trim();
+      name = name.replace(/^(有氧|力量|无氧|热身|拉伸|核心)\s*[：:=\-—]?\s*/, "").trim();
+      if (!name || name.length > 24) return;
+
+      var weight = null;
+      var wm = body.match(/(\d+(?:\.\d+)?)\s*(?:kg|公斤|千克)/i);
+      if (wm) weight = parseFloat(wm[1]);
+
+      var sets = null, reps = null, sm;
+      sm = body.match(/(\d+)\s*(?:组|sets?)\s*[×xX*✕✖]\s*(\d+)/);
+      if (!sm) sm = body.match(/(\d+)\s*[×xX*✕✖]\s*(\d+)/);
+      if (!sm) sm = body.match(/(\d+)\s*组\s*(\d+)\s*(?:次|reps?)/);
+      if (sm){ sets = parseInt(sm[1],10); reps = parseInt(sm[2],10); }
+
+      var mins = null;
+      var tm = body.match(/(\d+(?:\.\d+)?)\s*(?:分钟|min|mins?|分)/i);
+      if (tm) mins = parseFloat(tm[1]);
+
+      var ex = body.match(/(?:阻力|档位|速度|坡度|配速)\s*[:：]?\s*(\d+(?:\.\d+)?)\s*(?:档|km\/h|kmh|%|度)?/gi);
+      ex = ex ? ex.map(function(x){ return x.replace(/\s+/g, ""); }) : [];
+
+      out.push({ name:name, weight:weight, sets:sets, reps:reps, mins:mins, extras:ex });
+    });
+    return out;
+  }
+
+  var parsed = [];
+
+  function renderPreview(){
+    var box = $("#preview");
+    if (!parsed.length){
+      box.innerHTML = '<p class="parse-note">没认出任何一行。每行写成「器械名 3组×12次 45kg」或「器械名: 3组×12次 (45kg)」都能认。</p>';
+      return;
+    }
+    box.innerHTML = parsed.map(function(p){
+      var lib = matchMachine(p.name);
+      var detail = [];
+      if (p.weight != null) detail.push(p.weight + " kg");
+      if (p.sets != null && p.reps != null) detail.push(p.sets + " 组 × " + p.reps + " 次");
+      else if (p.sets != null) detail.push(p.sets + " 组");
+      if (p.mins != null) detail.push(p.mins + " 分钟");
+      if (p.extras && p.extras.length) detail.push(p.extras.join(" "));
+      var map = lib ? '<span class="map">→ ' + esc(lib) + '</span>'
+                    : '<span class="map new">清单里没有，按原名记</span>';
+      return '<div class="prow"><span class="pn">' + esc(p.name) + '</span>' + map +
+             '<span class="pv">' + (detail.length ? esc(detail.join(" · ")) : "没读到数值") + '</span></div>';
+    }).join("");
+  }
+
+  function applyParsed(){
+    if (!parsed.length) return;
+    if (!editing) loadFrom(findToday());
+    editing = true;
+
+    parsed.forEach(function(p){
+      var lib = matchMachine(p.name) || p.name;
+      if (!PLACE_OF[lib]){
+        PLACE_OF[lib] = "其他";
+        if (custom.indexOf(lib) < 0) custom.push(lib);
+      }
+      if (picked.indexOf(lib) < 0) picked.push(lib);
+      if (!draft[lib]) draft[lib] = [];
+
+      if (p.mins != null){
+        draft[lib].push({ w:"", s:"", r:"" });
+        var bits = [p.mins + " 分钟"];
+        if (p.extras && p.extras.length) bits = bits.concat(p.extras);
+        draftNote[lib] = bits.join(" · ");
+      } else {
+        draft[lib].push({
+          w: p.weight != null ? p.weight : "",
+          s: p.sets   != null ? p.sets   : "",
+          r: p.reps   != null ? p.reps   : ""
+        });
+      }
+    });
+
+    saveAll();
+    $("#sheet").hidden = true;
+    $("#importText").value = "";
+    parsed = []; $("#preview").innerHTML = "";
+    $("#applyBtn").disabled = true;
+    $("#parseNote").textContent = "括号里的动作指导会被忽略，只取器械名、重量、组数、次数。";
+    renderLibrary();
+    syncEntry();
+  }
+
+  $("#openImport").addEventListener("click", function(){
+    $("#sheet").hidden = false;
+    $("#importText").focus();
+  });
+  $("#closeImport").addEventListener("click", function(){ $("#sheet").hidden = true; });
+  $("#sheet").addEventListener("click", function(e){ if (e.target === $("#sheet")) $("#sheet").hidden = true; });
+
+  $("#parseBtn").addEventListener("click", function(){
+    parsed = parsePlan($("#importText").value);
+    renderPreview();
+    $("#applyBtn").disabled = parsed.length === 0;
+    $("#parseNote").textContent = parsed.length
+      ? "认出 " + parsed.length + " 项。核对一下，没问题就填进去。"
+      : "没认出内容。每行写成「器械名: 3组×12次 (45kg)」就行，括号里的说明会被忽略。";
+  });
+
+  $("#applyBtn").addEventListener("click", applyParsed);
+
+  /* ================= 备份 ================= */
+  function setMsg(t){ var e = $("#dataMsg"); if (e) e.textContent = t; }
+
+  $("#exportBtn").addEventListener("click", function(){
+    if (!workouts.length){ setMsg("还没有记录，先记两次再导出。"); return; }
+    var payload = {
+      app: "训练日志", version: 1,
+      exportedAt: new Date().toISOString(),
+      workouts: workouts, custom: custom
+    };
+    var blob = new Blob([JSON.stringify(payload, null, 2)], { type:"application/json" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = "训练日志备份-" + TODAY + ".json";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function(){ try{ URL.revokeObjectURL(url); }catch(e){} }, 1500);
+    setMsg("已导出 " + workouts.length + " 天记录，去「下载」里找那个 .json 文件。");
+  });
+
+  $("#importBtn").addEventListener("click", function(){
+    var input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json,application/json";
+    input.addEventListener("change", function(){
+      var f = input.files && input.files[0];
+      if (!f) return;
+      var r = new FileReader();
+      r.onload = function(){
+        var data;
+        try { data = JSON.parse(r.result); }
+        catch(e){ setMsg("这个文件读不出来，确认选的是导出的 .json 备份。"); return; }
+        var ws = Array.isArray(data) ? data : data.workouts;
+        if (!Array.isArray(ws)){ setMsg("文件里没找到训练记录，确认是导出的备份。"); return; }
+
+        var byDate = {}, added = 0;
+        workouts.forEach(function(w){ if (w && w.date) byDate[w.date] = w; });
+        ws.forEach(function(w){
+          if (!w || !w.date) return;
+          if (!byDate[w.date]) added++;
+          byDate[w.date] = w;
+        });
+        workouts = Object.keys(byDate).map(function(k){ return byDate[k]; });
+
+        if (data && data.custom && data.custom.length){
+          data.custom.forEach(function(m){
+            if (custom.indexOf(m) < 0){ custom.push(m); PLACE_OF[m] = PLACE_OF[m] || "其他"; }
+          });
+        }
+
+        saveAll();
+        loadFrom(findToday());
+        editing = false;
+        renderLibrary(); syncEntry(); renderStats();
+        setMsg("导入完成：新增 " + added + " 天，现在共 " + workouts.length + " 天记录。");
+      };
+      r.readAsText(f);
+    });
+    input.click();
+  });
+
+  loadFrom(findToday());
+  editing = false;
+  renderLibrary();
+  syncEntry();
+  renderStats();
+})();
+</script>
+</body>
+</html>
