@@ -138,10 +138,14 @@ button.primary.saved{background:#2E7D4F}
 .import-open:hover{border-color:var(--ink3);color:var(--ink)}
 .import-open b{font-weight:600;color:var(--ink);margin-right:auto}
 .sheet{position:fixed;inset:0;background:rgba(20,24,30,.42);z-index:50;display:flex;
-  align-items:flex-end;justify-content:center}
-.sheet[hidden]{display:none}
+  align-items:flex-end;justify-content:center;
+  visibility:hidden;opacity:0;pointer-events:none;
+  transition:opacity .24s ease,visibility .24s}
+.sheet.open{visibility:visible;opacity:1;pointer-events:auto}
 .sheet-in{width:100%;max-width:460px;background:var(--card);border-radius:18px 18px 0 0;
-  padding:20px 20px 26px;max-height:94vh;overflow:auto}
+  padding:20px 20px 26px;max-height:94vh;overflow:auto;
+  transform:translateY(100%);transition:transform .3s cubic-bezier(.32,.72,0,1)}
+.sheet.open .sheet-in{transform:translateY(0)}
 .sheet-top{display:flex;align-items:center;margin-bottom:16px}
 .sheet-top b{font-size:16px;font-weight:600}
 .sheet-top button{margin-left:auto;border:0;background:none;font:inherit;font-size:16px;
@@ -163,6 +167,22 @@ button.primary.saved{background:#2E7D4F}
 .parse-note{font-size:13px;color:var(--ink3);margin-top:14px}
 .data-actions{display:flex;gap:10px;margin-bottom:10px}
 .data-actions .ghost{flex:1;border-style:solid;text-align:center;padding:12px 0}
+
+/* ---------- 记录抽屉 ---------- */
+.drawer-in{width:100%;max-width:460px;background:var(--card);border-radius:18px 18px 0 0;
+  max-height:88vh;display:flex;flex-direction:column;
+  transform:translateY(100%);transition:transform .3s cubic-bezier(.32,.72,0,1)}
+.sheet.open .drawer-in{transform:translateY(0)}
+.drawer-top{position:relative;flex:none;display:flex;align-items:center;padding:17px 20px 10px}
+.drawer-top i{position:absolute;top:7px;left:50%;transform:translateX(-50%);width:36px;height:4px;
+  border-radius:99px;background:var(--line)}
+.drawer-top b{font-size:16px;font-weight:600}
+.drawer-top button{margin-left:auto;border:0;background:none;font:inherit;font-size:16px;
+  color:var(--ink3);cursor:pointer;line-height:1;padding:2px 0}
+.drawer-body{flex:1;overflow:auto;padding:2px 20px 0;-webkit-overflow-scrolling:touch}
+.drawer-foot{flex:none;padding:12px 20px 24px;border-top:1px solid var(--line);margin-top:14px}
+.drawer-foot .primary{margin-top:0}
+.import-open[hidden]{display:none}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
@@ -194,15 +214,9 @@ button.primary.saved{background:#2E7D4F}
       <p class="hint"><button class="ghost" id="addMachine">＋ 添加清单里没有的</button></p>
     </div>
 
-    <div class="block" id="entryBlock" hidden>
-      <p class="label">练了什么</p>
-      <div id="items"></div>
-
-      <p class="label" style="margin:26px 0 10px">感受</p>
-      <textarea id="note" placeholder="状态怎么样，有没有哪里不舒服…"></textarea>
-
-      <button class="primary" id="save" style="margin-top:18px">保存今天的训练</button>
-    </div>
+    <button class="import-open" id="reopenDrawer" type="button" hidden>
+      <span id="pendText">继续填写今天的训练</span>
+    </button>
 
     <div class="block" id="savedBlock" hidden>
       <p class="label">今天</p>
@@ -253,6 +267,25 @@ button.primary.saved{background:#2E7D4F}
       <button class="primary" type="button" id="applyBtn" disabled>填入今天的记录</button>
     </div>
     <p class="parse-note" id="parseNote">括号里的动作指导会被忽略，只取器械名、重量、组数、次数。</p>
+  </div>
+</div>
+
+<div class="sheet" id="drawer">
+  <div class="drawer-in">
+    <div class="drawer-top">
+      <i></i>
+      <b>今天的训练</b>
+      <button type="button" id="closeDrawer" title="收起">✕</button>
+    </div>
+    <div class="drawer-body">
+      <div id="items"></div>
+      <button class="ghost" type="button" id="moreMachine" style="width:100%;margin-top:6px">＋ 再加一台器械</button>
+      <p class="label" style="margin:24px 0 10px">感受</p>
+      <textarea id="note" placeholder="状态怎么样，有没有哪里不舒服…"></textarea>
+    </div>
+    <div class="drawer-foot">
+      <button class="primary" id="save">保存今天的训练</button>
+    </div>
   </div>
 </div>
 
@@ -351,7 +384,7 @@ button.primary.saved{background:#2E7D4F}
       h.setAttribute("aria-pressed", picked.indexOf(g) >= 0 ? "true" : "false");
       h.innerHTML = '<span class="gdot"></span>' + g;
       h.title = "只记「" + g + "」，不细分器械";
-      h.addEventListener("click", function(){ toggle(g); });
+      h.addEventListener("click", function(){ toggle(g, true); });
       wrap.appendChild(h);
 
       var chips = document.createElement("div");
@@ -362,7 +395,7 @@ button.primary.saved{background:#2E7D4F}
         c.style.setProperty("--cc", colorOf(m));
         c.setAttribute("aria-pressed", picked.indexOf(m) >= 0 ? "true" : "false");
         c.innerHTML = '<span class="dot"></span>' + m;
-        c.addEventListener("click", function(){ toggle(m); });
+        c.addEventListener("click", function(){ toggle(m, true); });
         chips.appendChild(c);
       });
       wrap.appendChild(chips);
@@ -377,15 +410,42 @@ button.primary.saved{background:#2E7D4F}
     }
   }
 
-  function toggle(name){
+  function toggle(name, focus){
+    capture();
     var i = picked.indexOf(name);
     if (i >= 0){ picked.splice(i,1); }
     else {
       picked.push(name);
       if (!draft[name]) draft[name] = [{w:"", s:"", r:""}];
     }
-    editing = true;
     renderLibrary();
+    if (picked.length){
+      openDrawer(focus);
+    } else {
+      editing = false;
+      closeDrawer();
+    }
+  }
+
+  function openDrawer(focusLast){
+    editing = true;
+    renderItems();
+    $("#drawer").classList.add("open");
+    document.body.style.overflow = "hidden";
+    syncEntry();
+    if (focusLast){
+      setTimeout(function(){
+        var els = $("#items").querySelectorAll(".item .w");
+        var last = els[els.length - 1];
+        if (last){ last.focus(); if (last.select) last.select(); }
+      }, 90);
+    }
+  }
+
+  function closeDrawer(){
+    capture();
+    $("#drawer").classList.remove("open");
+    document.body.style.overflow = "";
     syncEntry();
   }
 
@@ -427,7 +487,7 @@ button.primary.saved{background:#2E7D4F}
       head.className = "item-head";
       head.innerHTML = '<span class="dot"></span><b></b><button type="button" title="今天不练这个">✕</button>';
       head.querySelector("b").textContent = name;
-      head.querySelector("button").addEventListener("click", function(){ toggle(name); });
+      head.querySelector("button").addEventListener("click", function(){ toggle(name, false); });
       card.appendChild(head);
 
       if (draftNote[name]){
@@ -478,7 +538,6 @@ button.primary.saved{background:#2E7D4F}
 
   function syncEntry(){
     var doc = findToday();
-    $("#entryBlock").hidden = !editing;
     $("#savedBlock").hidden = editing || !doc;
     if (editing){
       renderItems();
@@ -488,8 +547,11 @@ button.primary.saved{background:#2E7D4F}
       btn.disabled = none;
       btn.style.opacity = none ? ".38" : "";
       btn.style.cursor  = none ? "default" : "";
+      $("#pendText").textContent = "已选 " + picked.length + " 台 · 继续填写";
+      $("#reopenDrawer").hidden = $("#drawer").classList.contains("open");
     } else {
       renderSaved();
+      $("#reopenDrawer").hidden = true;
     }
   }
 
@@ -507,7 +569,7 @@ button.primary.saved{background:#2E7D4F}
         '<button class="ghost" id="editToday" style="margin-top:15px">修改今天的记录</button>'+
       '</div>';
     var eb = $("#editToday");
-    if (eb) eb.addEventListener("click", function(){ editing = true; renderLibrary(); syncEntry(); });
+    if (eb) eb.addEventListener("click", function(){ loadFrom(findToday()); openDrawer(false); });
   }
 
   function esc(s){ return String(s).replace(/[&<>"]/g, function(c){
@@ -615,6 +677,8 @@ button.primary.saved{background:#2E7D4F}
     setTimeout(function(){
       editing = false;
       loadFrom(findToday());
+      $("#drawer").classList.remove("open");
+      document.body.style.overflow = "";
       renderLibrary();
       syncEntry();
     }, 620);
@@ -813,21 +877,26 @@ button.primary.saved{background:#2E7D4F}
     });
 
     saveAll();
-    $("#sheet").hidden = true;
+    $("#sheet").classList.remove("open");
     $("#importText").value = "";
     parsed = []; $("#preview").innerHTML = "";
     $("#applyBtn").disabled = true;
     $("#parseNote").textContent = "括号里的动作指导会被忽略，只取器械名、重量、组数、次数。";
     renderLibrary();
-    syncEntry();
+    openDrawer(false);
   }
 
   $("#openImport").addEventListener("click", function(){
-    $("#sheet").hidden = false;
-    $("#importText").focus();
+    $("#sheet").classList.add("open");
+    setTimeout(function(){ $("#importText").focus(); }, 90);
   });
-  $("#closeImport").addEventListener("click", function(){ $("#sheet").hidden = true; });
-  $("#sheet").addEventListener("click", function(e){ if (e.target === $("#sheet")) $("#sheet").hidden = true; });
+  $("#closeImport").addEventListener("click", function(){ $("#sheet").classList.remove("open"); });
+  $("#sheet").addEventListener("click", function(e){ if (e.target === $("#sheet")) $("#sheet").classList.remove("open"); });
+
+  $("#closeDrawer").addEventListener("click", closeDrawer);
+  $("#moreMachine").addEventListener("click", closeDrawer);
+  $("#drawer").addEventListener("click", function(e){ if (e.target === $("#drawer")) closeDrawer(); });
+  $("#reopenDrawer").addEventListener("click", function(){ openDrawer(false); });
 
   $("#parseBtn").addEventListener("click", function(){
     parsed = parsePlan($("#importText").value);
