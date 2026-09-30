@@ -175,6 +175,14 @@ button.primary.saved{background:#2E7D4F}
 .entry-banner b{font-weight:600;color:var(--ink)}
 .entry-banner .mini{margin-left:auto;font-weight:600;color:var(--ink)}
 
+/* ---------- 折线图 ---------- */
+.chart{width:100%;height:auto;display:block;aspect-ratio:320/172}
+.chart text{font-size:8px;fill:var(--ink3);font-variant-numeric:tabular-nums}
+.chart .gl{stroke:var(--line);stroke-width:.7}
+.legend{display:flex;flex-wrap:wrap;gap:5px 14px;margin-top:12px;font-size:12.5px;color:var(--ink2)}
+.legend .lg{display:inline-flex;align-items:center;gap:5px}
+.legend .lg i{width:8px;height:8px;border-radius:50%;flex:none}
+
 /* ---------- 破纪录提示 ---------- */
 .toast{position:fixed;top:14px;left:50%;z-index:80;max-width:min(420px,calc(100% - 28px));
   background:var(--ink);color:#fff;border-radius:13px;padding:13px 16px 14px;
@@ -302,8 +310,13 @@ button.primary.saved{background:#2E7D4F}
       <div class="summary" id="milestones"></div>
     </div>
     <div class="block">
-      <p class="label">最近的记录</p>
-      <div class="log-list" id="logs"></div>
+      <p class="label">重量变化 · 按部位</p>
+      <div id="chart"></div>
+      <div class="legend" id="chartLegend"></div>
+    </div>
+    <div class="block">
+      <button class="ghost" id="manageOpen" type="button" style="width:100%">管理记录（查看 / 删除某一天）</button>
+      <div class="log-list" id="logs" style="margin-top:14px" hidden></div>
     </div>
 
     <div class="block">
@@ -326,7 +339,7 @@ button.primary.saved{background:#2E7D4F}
     </div>
     <label class="label" for="importDate">记到哪一天</label>
     <input type="date" id="importDate" class="datein" style="margin-bottom:14px">
-    <textarea id="importText" placeholder="把计划整段粘进来，比如：&#10;&#10;1. 器械腿举: 3组×12次 (45kg，离心慢放)&#10;2. 坐姿腿弯举: 3组×12次 (40kg)&#10;有氧: 椭圆机10分钟 (阻力8档)"></textarea>
+    <textarea id="importText" placeholder="把计划整段粘进来，比如：&#10;&#10;椭圆机&#10;时间30分钟&#10;阻力8档&#10;&#10;1. 器械腿举: 3组×12次 (45kg)"></textarea>
     <div id="preview"></div>
     <div class="sheet-actions">
       <button class="ghost" type="button" id="parseBtn">解析</button>
@@ -459,6 +472,7 @@ button.primary.saved{background:#2E7D4F}
   function findDate(k){ for(var i=0;i<workouts.length;i++) if(workouts[i].date===k) return workouts[i]; return null; }
   function findToday(){ return findDate(TODAY); }
   function mdOf(k){ return Number(k.slice(5,7)) + "月" + Number(k.slice(8,10)) + "日"; }
+  function md2(k){ return Number(k.slice(5,7)) + "/" + Number(k.slice(8,10)); }
 
   /* ================= 器械库 ================= */
   function groupsToShow(){
@@ -823,8 +837,15 @@ button.primary.saved{background:#2E7D4F}
       }).join("");
     }
 
-    var recent = workouts.slice().sort(function(a,b){ return a.date<b.date?1:-1; }).slice(0,8);
+    renderLogs();
+    renderChart();
+    renderMilestones();
+  }
+
+  /* 管理记录：折叠在「管理记录」按钮下面，可展开某天、删动作 / 删整天 */
+  function renderLogs(){
     var lg = $("#logs");
+    var recent = workouts.slice().sort(function(a,b){ return a.date<b.date?1:-1; }).slice(0,30);
     if (!recent.length){
       lg.innerHTML = '<p class="empty">暂时空着。</p>';
     } else {
@@ -865,8 +886,99 @@ button.primary.saved{background:#2E7D4F}
                '</details>';
       }).join("");
     }
+  }
 
-    renderMilestones();
+  /* ================= 重量变化折线图（按部位各一条线） ================= */
+  function renderChart(){
+    var box = $("#chart"), lgBox = $("#chartLegend");
+    if (!box) return;
+
+    /* 所有训练日（升序、去重），最多看最近 30 个 */
+    var days = workouts.map(function(w){ return w.date; }).sort();
+    days = days.filter(function(d, i){ return days.indexOf(d) === i; });
+    if (!days.length){
+      box.innerHTML = '<p class="empty">还没有记录。<br>练几次之后，这里会画出各部位的重量变化。</p>';
+      if (lgBox) lgBox.innerHTML = "";
+      return;
+    }
+    var dates = days.slice(-30);
+    var pos = {};
+    dates.forEach(function(d, i){ pos[d] = i; });
+
+    /* 每个部位：那天练到的最高重量 */
+    var series = {};
+    workouts.forEach(function(w){
+      if (pos[w.date] == null) return;
+      (w.items || []).forEach(function(it){
+        if (it.cardio) return;
+        var place = PLACE_OF[it.name] || "其他";
+        var top = 0;
+        (it.sets || []).forEach(function(s){ var v = Number(s.w) || 0; if (v > top) top = v; });
+        if (!top) return;
+        var arr = series[place] || (series[place] = []);
+        var last = arr[arr.length - 1];
+        if (last && last.i === pos[w.date]){ if (top > last.v) last.v = top; }
+        else arr.push({ i:pos[w.date], v:top });
+      });
+    });
+
+    var placeIdx = function(p){ var i = GROUP_ORDER.indexOf(p); return i < 0 ? GROUP_ORDER.length : i; };
+    var places = Object.keys(series).sort(function(a, b){ return placeIdx(a) - placeIdx(b); });
+    places.forEach(function(p){ series[p].sort(function(a, b){ return a.i - b.i; }); });
+
+    if (!places.length){
+      box.innerHTML = '<p class="empty">还没有力量训练的记录。</p>';
+      if (lgBox) lgBox.innerHTML = "";
+      return;
+    }
+
+    var maxV = 0;
+    places.forEach(function(p){ series[p].forEach(function(pt){ if (pt.v > maxV) maxV = pt.v; }); });
+    maxV = Math.max(10, Math.ceil(maxV / 10) * 10);
+
+    var W = 320, H = 172, L = 30, R = 8, T = 14, B = 22;
+    var n = dates.length;
+    var X = function(i){ return n <= 1 ? (L + (W - L - R) / 2) : L + i * (W - L - R) / (n - 1); };
+    var Y = function(v){ return H - B - (v / maxV) * (H - T - B); };
+
+    var svg = '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet" ' +
+              'role="img" aria-label="各部位重量随日期的变化">';
+
+    [0, 0.5, 1].forEach(function(f){
+      var v = maxV * f, yy = Y(v);
+      svg += '<line class="gl" x1="' + L + '" y1="' + yy.toFixed(1) + '" x2="' + (W - R) + '" y2="' + yy.toFixed(1) + '"/>';
+      svg += '<text x="' + (L - 5) + '" y="' + (yy + 3).toFixed(1) + '" text-anchor="end">' + v + '</text>';
+    });
+    svg += '<text x="' + (L - 5) + '" y="' + (T - 4) + '" text-anchor="end">kg</text>';
+
+    places.forEach(function(p){
+      var col = PLACE_COLOR[p] || "#6B7280";
+      var pts = series[p];
+      if (pts.length > 1){
+        var d = pts.map(function(pt, k){ return (k ? "L" : "M") + X(pt.i).toFixed(1) + " " + Y(pt.v).toFixed(1); }).join(" ");
+        svg += '<path d="' + d + '" fill="none" stroke="' + col + '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>';
+      }
+      pts.forEach(function(pt){
+        svg += '<circle cx="' + X(pt.i).toFixed(1) + '" cy="' + Y(pt.v).toFixed(1) + '" r="2.6" fill="' + col + '"/>';
+      });
+    });
+
+    if (n >= 2){
+      svg += '<text x="' + L + '" y="' + (H - 7) + '" text-anchor="start">' + md2(dates[0]) + '</text>';
+      if (n >= 5){
+        var mid = Math.floor((n - 1) / 2);
+        svg += '<text x="' + X(mid).toFixed(1) + '" y="' + (H - 7) + '" text-anchor="middle">' + md2(dates[mid]) + '</text>';
+      }
+      svg += '<text x="' + (W - R) + '" y="' + (H - 7) + '" text-anchor="end">' + md2(dates[n - 1]) + '</text>';
+    }
+    svg += '</svg>';
+    box.innerHTML = svg;
+
+    if (lgBox){
+      lgBox.innerHTML = places.map(function(p){
+        return '<span class="lg"><i style="background:' + (PLACE_COLOR[p] || "#6B7280") + '"></i>' + esc(p) + '</span>';
+      }).join("");
+    }
   }
 
   /* ================= 里程碑（各器械历史最高重量） ================= */
@@ -955,6 +1067,12 @@ button.primary.saved{background:#2E7D4F}
     saveAll();
     afterDataChange(date);
   }
+
+  $("#manageOpen").addEventListener("click", function(){
+    var lg = $("#logs");
+    lg.hidden = !lg.hidden;
+    this.textContent = lg.hidden ? "管理记录（查看 / 删除某一天）" : "收起记录列表";
+  });
 
   $("#logs").addEventListener("click", function(e){
     var x = closestByClass(e.target, "del-x");
@@ -1160,54 +1278,109 @@ button.primary.saved{background:#2E7D4F}
     return null;
   }
 
-  /* 宽进严出：容得下各种写法，但只取该取的字段 */
+  /* 参数关键词：以这些词开头的行，是上一台器械的参数，不是新器械 */
+  var PARAM_HEAD = /^(时间|时长|用时|持续|阻力|阻抗|阻值|载荷|坡度|斜度|倾角|上坡|速度|速率|踏频|转速|节奏|桨频|划频|档位|档|等级|强度|距离|里程|个数|重量|负重|组数?|次数?|分钟|min|kg)/i;
+
+  /* 去掉行首序号、部位前缀，取出器械名 */
+  function cleanName(s){
+    var name = String(s).replace(/[：:=\-—，,、\s]+$/, "").trim();
+    name = name.replace(/^(有氧|力量|无氧|热身|拉伸|核心)\s*[：:=\-—]?\s*/, "").trim();
+    return name;
+  }
+
+  function blankItem(name){
+    return { name:name, weight:null, sets:null, reps:null, mins:null, cardio:{} };
+  }
+
+  /* 宽进严出：容得下各种写法，但只取该取的字段
+     支持两种排版：
+       ① 一台器械一行：  椭圆机 30分钟 阻力8档
+       ② 器械名一行、参数分行： 椭圆机 / 时间30分钟 / 阻力7-8档
+     —— 参数行靠「行首是参数关键词」或「数字前没有名字」来识别，归到上一台器械 */
   function parsePlan(text){
     var out = [];
+    var cur = null;                       // 正在归并的那台器械
     text.split(/\r?\n/).forEach(function(raw){
       var line = raw.trim();
       if (!line) return;
       line = line.replace(/^\s*(?:\d+\s*[.、)．]\s*|[-•*·]\s*)+/, "");
       if (!line) return;
+      if (/^(拉伸|放松|热身|泡沫轴|按摩|休息|注意|备注)/.test(line)) return;   // 说明行，忽略
 
       var m = line.match(/\d/);
-      if (!m) return;
+
+      /* --- 纯文字行：可能是器械名（也可能什么都不是） --- */
+      if (!m){
+        var only = cleanName(line);
+        if (!only || only.length > 24){ cur = null; return; }
+        cur = blankItem(only);
+        out.push(cur);
+        return;
+      }
+
       var head = line.slice(0, m.index);
-      var body = line.slice(m.index);
+      var name = cleanName(head);
+      var target;
 
-      var name = head.replace(/[：:=\-—，,、\s]+$/, "").trim();
-      name = name.replace(/^(有氧|力量|无氧|热身|拉伸|核心)\s*[：:=\-—]?\s*/, "").trim();
-      if (!name || name.length > 24) return;
+      if (!name || PARAM_HEAD.test(name)){
+        if (!cur) return;                 // 参数行但没有归属的器械，丢弃
+        target = cur;                     // 归到上一台器械
+      } else {
+        target = blankItem(name);
+        out.push(target);
+        cur = target;
+      }
 
-      var weight = null;
-      var wm = body.match(/(\d+(?:\.\d+)?)\s*(?:kg|公斤|千克)/i);
-      if (wm) weight = parseFloat(wm[1]);
+      /* --- 取字段：关键词可能在行首，所以拿整行匹配 --- */
+      if (target.weight == null){
+        var wm = line.match(/(\d+(?:\.\d+)?)\s*(?:kg|公斤|千克)/i)
+              || line.match(/(?:重量|负重)\s*[:：]?\s*(\d+(?:\.\d+)?)/);
+        if (wm) target.weight = parseFloat(wm[1]);
+      }
 
-      var sets = null, reps = null, sm;
-      sm = body.match(/(\d+)\s*(?:组|sets?)\s*[×xX*✕✖]\s*(\d+)/);
-      if (!sm) sm = body.match(/(\d+)\s*[×xX*✕✖]\s*(\d+)/);
-      if (!sm) sm = body.match(/(\d+)\s*组\s*(\d+)\s*(?:次|reps?)/);
-      if (sm){ sets = parseInt(sm[1],10); reps = parseInt(sm[2],10); }
+      if (target.sets == null){
+        var sm = line.match(/(\d+)\s*(?:组|sets?)\s*[×xX*✕✖]\s*(\d+)/)
+              || line.match(/(\d+)\s*[×xX*✕✖]\s*(\d+)/)
+              || line.match(/(\d+)\s*组\s*(\d+)\s*(?:次|reps?)/)
+              || line.match(/组数\s*[:：]?\s*(\d+)[\s\S]*?次数\s*[:：]?\s*(\d+)/);
+        if (sm){ target.sets = parseInt(sm[1],10); target.reps = parseInt(sm[2],10); }
+        else {
+          var sr = line.match(/(\d+)\s*次\s*[×xX*✕✖]\s*(\d+)\s*组/);   // 12次×3组
+          if (sr){ target.reps = parseInt(sr[1],10); target.sets = parseInt(sr[2],10); }
+          else {
+            var sg = line.match(/(\d+)\s*组/);                          // 只写了 3组
+            if (sg) target.sets = parseInt(sg[1],10);
+          }
+        }
+      }
 
-      var mins = null;
-      var tm = body.match(/(\d+(?:\.\d+)?)\s*(?:分钟|min|mins?|分)/i);
-      if (tm) mins = parseFloat(tm[1]);
+      if (target.mins == null){
+        var tm = line.match(/(\d+(?:\.\d+)?)\s*(?:分钟|min|mins?|分)/i);
+        if (tm) target.mins = parseFloat(tm[1]);
+      }
 
-      var cardio = {};
-      [[/阻力\s*[:：]?\s*(\d+(?:\.\d+)?)/, "resist"],
-       [/坡度\s*[:：]?\s*(\d+(?:\.\d+)?)/, "incline"],
-       [/速度\s*[:：]?\s*(\d+(?:\.\d+)?)/, "speed"],
-       [/踏频\s*[:：]?\s*(\d+(?:\.\d+)?)/, "rpm"],
-       [/桨频\s*[:：]?\s*(\d+(?:\.\d+)?)/, "spm"],
-       [/档位\s*[:：]?\s*(\d+(?:\.\d+)?)/, "level"],
-       [/距离\s*[:：]?\s*(\d+(?:\.\d+)?)/, "dist"],
-       [/个数\s*[:：]?\s*(\d+(?:\.\d+)?)/, "count"]].forEach(function(p){
-        var mm = body.match(p[0]);
-        if (mm) cardio[p[1]] = parseFloat(mm[1]);
-      });
-
-      out.push({ name:name, weight:weight, sets:sets, reps:reps, mins:mins, cardio:cardio });
+      /* 力量行不再找有氧参数；范围写法（7-8档）取前一个数 */
+      if (!(target.sets != null && target.reps != null)){
+        [[/(?:阻抗|阻力|阻值|载荷)\s*[:：]?\s*(\d+(?:\.\d+)?)/, "resist"],
+         [/(?:坡度|斜度|倾角|上坡)\s*[:：]?\s*(\d+(?:\.\d+)?)/, "incline"],
+         [/(?:速度|速率)\s*[:：]?\s*(\d+(?:\.\d+)?)/, "speed"],
+         [/(?:踏频|转速|节奏)\s*[:：]?\s*(\d+(?:\.\d+)?)/, "rpm"],
+         [/(?:桨频|划频)\s*[:：]?\s*(\d+(?:\.\d+)?)/, "spm"],
+         [/(?:档位|等级|强度)\s*[:：]?\s*(\d+(?:\.\d+)?)/, "level"],
+         [/(?:距离|里程)\s*[:：]?\s*(\d+(?:\.\d+)?)/, "dist"],
+         [/(?:个数)\s*[:：]?\s*(\d+(?:\.\d+)?)/, "count"]].forEach(function(p){
+          if (target.cardio[p[1]] != null) return;
+          var mm = line.match(p[0]);
+          if (mm) target.cardio[p[1]] = parseFloat(mm[1]);
+        });
+      }
     });
-    return out;
+
+    /* 名字有了、但一个数都没读到的（「拉伸」「注意休息」之类）丢掉 */
+    return out.filter(function(p){
+      return p.weight != null || p.sets != null || p.mins != null ||
+             (p.cardio && Object.keys(p.cardio).length);
+    });
   }
 
   var parsed = [];
@@ -1215,7 +1388,7 @@ button.primary.saved{background:#2E7D4F}
   function renderPreview(){
     var box = $("#preview");
     if (!parsed.length){
-      box.innerHTML = '<p class="parse-note">没认出任何一行。每行写成「器械名 3组×12次 45kg」或「器械名: 3组×12次 (45kg)」都能认。</p>';
+      box.innerHTML = '<p class="parse-note">没认出任何一行。器械名和参数写一行（椭圆机 30分钟 阻力8档），或器械名一行、参数各一行，都能认。</p>';
       return;
     }
     box.innerHTML = parsed.map(function(p){
