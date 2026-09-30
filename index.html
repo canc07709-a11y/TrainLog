@@ -80,28 +80,23 @@ input:focus-visible,textarea:focus-visible{outline:2px solid var(--focus);outlin
 .item-head button{margin-left:auto;border:0;background:none;color:var(--ink3);font:inherit;
   font-size:14px;cursor:pointer;padding:2px 0;line-height:1;transition:color .15s}
 .item-head button:hover{color:var(--red)}
-.set{display:flex;align-items:center;gap:9px;padding:10px 12px;background:var(--field);border-radius:10px;margin-bottom:6px}
-.set input{border:0;background:none;font:inherit;color:var(--ink);font-variant-numeric:tabular-nums;
-  width:100%;min-width:0;padding:0}
-.set .w{font-size:22px;font-weight:650;letter-spacing:-.01em}
-.set .s,.set .r{font-size:15px;font-weight:600;text-align:center;width:34px}
-.set .u{font-size:11.5px;color:var(--ink3);flex:none}
-.set .op{color:var(--ink3);font-size:13px;flex:none}
-.set .del{border:0;background:none;color:var(--ink3);font:inherit;font-size:14px;cursor:pointer;
-  flex:none;padding:4px 2px;line-height:1;transition:color .15s}
-.set .del:hover{color:var(--red)}
-.set:focus-within{background:#fff;box-shadow:inset 0 0 0 1px var(--line)}
+.set{display:flex;align-items:stretch;gap:8px;margin-bottom:8px}
 
-/* 有氧器械的参数格 */
+/* 参数格（力量行 / 有氧行共用）：数字在上，标签+单位在下，三格等高对齐 */
 .cfields{display:flex;gap:8px}
-.cf{flex:1;min-width:0;background:var(--field);border-radius:10px;padding:10px 5px 8px;
-  display:flex;flex-direction:column;align-items:center;gap:1px}
+.cf{flex:1;min-width:0;background:var(--field);border-radius:10px;padding:9px 5px 8px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
 .cf input{border:0;background:none;font:inherit;font-size:22px;font-weight:650;color:var(--ink);
-  text-align:center;width:100%;min-width:0;font-variant-numeric:tabular-nums}
+  text-align:center;width:100%;min-width:0;font-variant-numeric:tabular-nums;line-height:1.15;padding:0}
 .cf input::placeholder{color:var(--ink3);font-weight:400}
+.cf .cl{display:flex;align-items:baseline;gap:3px;justify-content:center;line-height:1}
 .cf b{font-size:12px;font-weight:600;color:var(--ink2)}
-.cf i{font-size:10.5px;font-style:normal;color:var(--ink3);line-height:1.2}
+.cf i{font-size:10.5px;font-style:normal;color:var(--ink3)}
 .cf:focus-within{background:#fff;box-shadow:inset 0 0 0 1px var(--line)}
+/* 去掉数字框右侧的上下箭头，数字才能真正居中 */
+.cf input[type=number]::-webkit-outer-spin-button,
+.cf input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.cf input[type=number]{-moz-appearance:textfield;appearance:textfield}
 
 .mini{font-size:13px;color:var(--ink3);border:0;background:none;font-family:inherit;
   padding:4px 2px;cursor:pointer;transition:color .15s}
@@ -128,7 +123,7 @@ button.primary.saved{background:#2E7D4F}
 
 .stat-figure{font-size:52px;font-weight:680;letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1.05}
 .stat-figure small{font-size:16px;font-weight:500;color:var(--ink3);margin-left:4px;letter-spacing:0}
-.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;max-width:286px;margin:0 auto}
 .grid i{display:block;aspect-ratio:1;border-radius:3px;background:var(--field)}
 .grid i[data-on="1"]{background:var(--gc)}
 .bars{display:flex;flex-direction:column;gap:11px}
@@ -144,6 +139,55 @@ button.primary.saved{background:#2E7D4F}
 .log-list .row .p{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .log-list .row .v{margin-left:auto;font-size:12.5px;color:var(--ink3);font-variant-numeric:tabular-nums;flex:none;padding-left:8px}
 .empty{text-align:center;color:var(--ink3);font-size:14px;padding:40px 20px;line-height:1.7}
+
+/* ---------- 记录条目：展开看细节 / 删除 ---------- */
+.log-list details{border-bottom:1px solid var(--line)}
+.log-list details>summary.row{border-bottom:0;cursor:pointer;list-style:none}
+.log-list details>summary.row::-webkit-details-marker{display:none}
+.log-list details>summary.row::after{content:"";width:6px;height:6px;flex:none;margin-left:8px;
+  align-self:center;border-right:1.5px solid var(--ink3);border-bottom:1.5px solid var(--ink3);
+  transform:rotate(45deg) translateY(-1px);transition:transform .15s}
+.log-list details[open]>summary.row::after{transform:rotate(-135deg) translateY(-1px)}
+.log-detail{padding:2px 0 13px;border-top:1px dashed var(--line)}
+.log-detail .li{display:flex;align-items:center;gap:8px;padding:9px 0;font-size:13.5px}
+.log-detail .li .dot{width:8px;height:8px;border-radius:50%;flex:none}
+.log-detail .li b{font-weight:600}
+.log-detail .li .sv{margin-left:auto;color:var(--ink2);font-variant-numeric:tabular-nums;
+  font-size:12.5px;text-align:right;padding-left:8px}
+.log-detail .li-note{font-size:13px;color:var(--ink3);padding:6px 0 0;white-space:pre-wrap}
+
+.del-x{flex:none;border:0;background:none;font:inherit;font-size:15px;color:var(--ink3);
+  cursor:pointer;padding:2px 4px;line-height:1;border-radius:7px;transition:color .15s,background .15s}
+.del-x:hover{color:var(--red)}
+.del-x.armed{color:#fff;background:var(--red);font-size:12.5px;font-weight:600;padding:4px 9px}
+.del-day{width:100%;margin-top:4px;border:1px solid var(--line);background:none;font:inherit;
+  font-size:13px;color:var(--ink3);padding:10px 0;border-radius:9px;cursor:pointer;
+  transition:color .15s,border-color .15s,background .15s}
+.del-day:hover{color:var(--red);border-color:var(--red)}
+.del-day.armed{color:#fff;background:var(--red);border-color:var(--red);font-weight:600}
+
+/* ---------- 日期 / 补录 ---------- */
+.datein{border:1px solid var(--line);background:var(--field);border-radius:10px;padding:11px 13px;
+  font:inherit;font-size:15px;color:var(--ink);width:100%;font-variant-numeric:tabular-nums}
+.entry-banner{display:flex;align-items:center;gap:8px;background:var(--field);border-radius:10px;
+  padding:11px 13px;font-size:13.5px;color:var(--ink2);margin:0 0 18px}
+.entry-banner[hidden]{display:none}
+.entry-banner b{font-weight:600;color:var(--ink)}
+.entry-banner .mini{margin-left:auto;font-weight:600;color:var(--ink)}
+
+/* ---------- 破纪录提示 ---------- */
+.toast{position:fixed;top:14px;left:50%;z-index:80;max-width:min(420px,calc(100% - 28px));
+  background:var(--ink);color:#fff;border-radius:13px;padding:13px 16px 14px;
+  box-shadow:0 12px 34px rgba(20,24,30,.3);
+  transform:translate(-50%,-170%);opacity:0;pointer-events:none;
+  transition:transform .3s cubic-bezier(.32,.72,0,1),opacity .3s}
+.toast.show{transform:translate(-50%,0);opacity:1}
+.toast .th{font-size:11px;font-weight:700;letter-spacing:.12em;color:#E9BE4E;margin-bottom:7px}
+.toast .pr{display:flex;align-items:baseline;gap:8px;font-size:14px;padding:2px 0}
+.toast .pr .n{font-weight:600}
+.toast .pr .v{font-variant-numeric:tabular-nums;font-weight:600}
+.toast .pr .o{margin-left:auto;font-size:12px;color:rgba(255,255,255,.6);
+  font-variant-numeric:tabular-nums;padding-left:10px}
 
 /* ---------- 导入 ---------- */
 .import-open{width:100%;display:flex;align-items:center;gap:9px;border:1px solid var(--line);
@@ -218,6 +262,8 @@ button.primary.saved{background:#2E7D4F}
       <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6v11.2M8.4 11.2l3.6 3.6 3.6-3.6"/><path d="M5.4 15.6v3a1.8 1.8 0 0 0 1.8 1.8h9.6a1.8 1.8 0 0 0 1.8-1.8v-3"/></svg>
       <b>从文本导入今天的计划</b>
     </button>
+    <p class="hint" style="margin:-8px 0 20px"><button class="ghost" id="openBackfill" type="button">补录以前的记录</button></p>
+    <div class="entry-banner" id="entryBanner" hidden></div>
     <div class="block">
       <p class="label">今天练什么</p>
       <div class="searchbox">
@@ -233,7 +279,7 @@ button.primary.saved{background:#2E7D4F}
     </button>
 
     <div class="block" id="savedBlock" hidden>
-      <p class="label">今天</p>
+      <p class="label" id="savedLabel">今天</p>
       <div id="savedBox"></div>
     </div>
   </section>
@@ -250,6 +296,10 @@ button.primary.saved{background:#2E7D4F}
     <div class="block">
       <p class="label">各部位练了几次</p>
       <div class="bars" id="bars"></div>
+    </div>
+    <div class="block">
+      <p class="label">里程碑 · 最高重量</p>
+      <div class="summary" id="milestones"></div>
     </div>
     <div class="block">
       <p class="label">最近的记录</p>
@@ -274,6 +324,8 @@ button.primary.saved{background:#2E7D4F}
       <b>导入今天的计划</b>
       <button type="button" id="closeImport" title="关闭">✕</button>
     </div>
+    <label class="label" for="importDate">记到哪一天</label>
+    <input type="date" id="importDate" class="datein" style="margin-bottom:14px">
     <textarea id="importText" placeholder="把计划整段粘进来，比如：&#10;&#10;1. 器械腿举: 3组×12次 (45kg，离心慢放)&#10;2. 坐姿腿弯举: 3组×12次 (40kg)&#10;有氧: 椭圆机10分钟 (阻力8档)"></textarea>
     <div id="preview"></div>
     <div class="sheet-actions">
@@ -284,11 +336,26 @@ button.primary.saved{background:#2E7D4F}
   </div>
 </div>
 
+<div class="sheet" id="backSheet" hidden>
+  <div class="sheet-in">
+    <div class="sheet-top">
+      <b>补录以前的记录</b>
+      <button type="button" id="closeBack" title="关闭">✕</button>
+    </div>
+    <label class="label" for="backDate">记到哪一天</label>
+    <input type="date" id="backDate" class="datein">
+    <div class="sheet-actions">
+      <button class="primary" type="button" id="backGo">开始补录</button>
+    </div>
+    <p class="parse-note">选好日期，然后像平时一样点器械、填重量，保存到那一天。这天已有的记录会先读出来。</p>
+  </div>
+</div>
+
 <div class="sheet" id="drawer">
   <div class="drawer-in">
     <div class="drawer-top">
       <i></i>
-      <b>今天的训练</b>
+      <b id="drawerTitle">今天的训练</b>
       <button type="button" id="closeDrawer" title="收起">✕</button>
     </div>
     <div class="drawer-body">
@@ -302,6 +369,8 @@ button.primary.saved{background:#2E7D4F}
     </div>
   </div>
 </div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
 (function(){
@@ -379,6 +448,7 @@ button.primary.saved{background:#2E7D4F}
     return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
   }
   var TODAY = keyOf(new Date());
+  var editingDate = TODAY;              // 正在记哪一天；补录时会变
 
   (function(){
     var d=new Date(), w="日一二三四五六"[d.getDay()];
@@ -386,7 +456,9 @@ button.primary.saved{background:#2E7D4F}
   })();
 
   function saveAll(){ store.set("workouts",workouts); store.set("custom",custom); }
-  function findToday(){ for(var i=0;i<workouts.length;i++) if(workouts[i].date===TODAY) return workouts[i]; return null; }
+  function findDate(k){ for(var i=0;i<workouts.length;i++) if(workouts[i].date===k) return workouts[i]; return null; }
+  function findToday(){ return findDate(TODAY); }
+  function mdOf(k){ return Number(k.slice(5,7)) + "月" + Number(k.slice(8,10)) + "日"; }
 
   /* ================= 器械库 ================= */
   function groupsToShow(){
@@ -445,13 +517,35 @@ button.primary.saved{background:#2E7D4F}
     }
   }
 
+  /* 上次做这台器械时填的数据（按日期从近到远找），用来预填 */
+  function lastSetsOf(name, before){
+    var list = workouts.slice().sort(function(a,b){ return a.date < b.date ? 1 : -1; });
+    for (var i=0;i<list.length;i++){
+      if (before && list[i].date >= before) continue;   // 只取这天之前的，补录时不会带出更晚的数据
+      var its = list[i].items || [];
+      for (var j=0;j<its.length;j++){
+        if (its[j].name === name && its[j].sets && its[j].sets.length) return its[j].sets;
+      }
+    }
+    return null;
+  }
+
+  /* 上次填了几行就生成几行；重量、组数、次数都带过来，直接改就行 */
+  function draftFromLast(name){
+    var last = lastSetsOf(name, editingDate);
+    if (!last || !last.length) return [{w:"", s:"", r:""}];
+    return last.map(function(x){
+      return { w:(x.w==null?"":x.w), s:(x.s==null?"":x.s), r:(x.r==null?"":x.r) };
+    });
+  }
+
   function toggle(name, focus){
     capture();
     var i = picked.indexOf(name);
     if (i >= 0){ picked.splice(i,1); }
     else {
       picked.push(name);
-      if (!draft[name]) draft[name] = [{w:"", s:"", r:""}];
+      if (!draft[name]) draft[name] = draftFromLast(name);
     }
     renderLibrary();
     if (picked.length){
@@ -489,20 +583,9 @@ button.primary.saved{background:#2E7D4F}
     var row = document.createElement("div");
     row.className = "set";
     row.innerHTML =
-      '<input class="w" type="number" inputmode="decimal" min="0" step="2.5" placeholder="0" value="'+(w||"")+'">'+
-      '<span class="u">kg</span><span class="op">×</span>'+
-      '<input class="s" type="number" inputmode="numeric" min="0" placeholder="0" value="'+(s||"")+'">'+
-      '<span class="u">组</span><span class="op">×</span>'+
-      '<input class="r" type="number" inputmode="numeric" min="0" placeholder="0" value="'+(r||"")+'">'+
-      '<span class="u">次</span>'+
-      '<button class="del" type="button" title="删掉这一行">✕</button>';
-    row.querySelector(".del").addEventListener("click", function(){
-      var list = draft[name];
-      var idx = Array.prototype.indexOf.call(row.parentNode.children, row);
-      if (list.length > 1){ list.splice(idx,1); row.remove(); }
-      else { row.querySelector(".w").value=""; row.querySelector(".s").value=""; row.querySelector(".r").value=""; }
-      capture();
-    });
+      '<label class="cf"><input class="w" type="number" inputmode="decimal" min="0" step="2.5" placeholder="0" value="'+(w||"")+'"><span class="cl"><b>重量</b><i>kg</i></span></label>'+
+      '<label class="cf"><input class="s" type="number" inputmode="numeric" min="0" placeholder="0" value="'+(s||"")+'"><span class="cl"><b>组数</b></span></label>'+
+      '<label class="cf"><input class="r" type="number" inputmode="numeric" min="0" placeholder="0" value="'+(r||"")+'"><span class="cl"><b>次数</b></span></label>';
     ["input","change"].forEach(function(ev){ row.addEventListener(ev, capture); });
     return row;
   }
@@ -516,7 +599,7 @@ button.primary.saved{background:#2E7D4F}
       var lb = document.createElement("label");
       lb.className = "cf";
       lb.innerHTML = '<input type="number" inputmode="decimal" min="0" placeholder="–" value="' + v + '">' +
-                     '<b>' + lab[0] + '</b>' + (lab[1] ? '<i>' + lab[1] + '</i>' : '');
+                     '<span class="cl"><b>' + lab[0] + '</b>' + (lab[1] ? '<i>' + lab[1] + '</i>' : '') + '</span>';
       lb.querySelector("input").setAttribute("data-k", k);
       lb.addEventListener("input", capture);
       lb.addEventListener("change", capture);
@@ -614,12 +697,13 @@ button.primary.saved{background:#2E7D4F}
   }
 
   function syncEntry(){
-    var doc = findToday();
+    var doc = findDate(editingDate);
+    updateDateUI();
     $("#savedBlock").hidden = editing || !doc;
     if (editing){
       renderItems();
       var btn = $("#save"), none = picked.length === 0;
-      btn.textContent = "保存今天的训练";
+      btn.textContent = editingDate === TODAY ? "保存今天的训练" : "保存 " + mdOf(editingDate) + " 的记录";
       btn.classList.remove("saved");
       btn.disabled = none;
       btn.style.opacity = none ? ".38" : "";
@@ -633,9 +717,10 @@ button.primary.saved{background:#2E7D4F}
   }
 
   function renderSaved(){
-    var d = findToday(), box = $("#savedBox");
+    var d = findDate(editingDate), box = $("#savedBox");
     if (!d){ $("#savedBlock").hidden = true; box.innerHTML=""; return; }
     $("#savedBlock").hidden = false;
+    var isToday = editingDate === TODAY;
     var rows = (d.items||[]).map(function(it){
       return '<div class="srow"><span class="dot" style="background:'+colorOf(it.name)+'"></span>'+
              '<b>'+esc(it.name)+'</b><span class="sv">'+esc(itemSummary(it))+'</span></div>';
@@ -645,10 +730,41 @@ button.primary.saved{background:#2E7D4F}
         '<div class="summary-head"><time>'+esc(d.savedAt||"")+'</time></div>'+
         rows+
         (d.note ? '<div class="note">'+esc(d.note)+'</div>' : "")+
-        '<button class="ghost" id="editToday" style="margin-top:14px">修改今天的记录</button>'+
+        '<button class="ghost" id="editToday" style="margin-top:14px">'+(isToday ? "修改今天的记录" : "修改这天的记录")+'</button>'+
+        (isToday ? "" : '<button class="ghost" id="backTodayBtn" style="margin-top:8px;width:100%">回到今天</button>')+
       '</div>';
     var eb = $("#editToday");
-    if (eb) eb.addEventListener("click", function(){ loadFrom(findToday()); openDrawer(false); });
+    if (eb) eb.addEventListener("click", function(){ loadFrom(findDate(editingDate)); openDrawer(false); });
+    var bb = $("#backTodayBtn");
+    if (bb) bb.addEventListener("click", goToday);
+  }
+
+  /* 补录时把「现在在记哪天」标清楚，并给一条回到今天的路 */
+  function updateDateUI(){
+    var isToday = editingDate === TODAY;
+    var b = $("#entryBanner");
+    if (b){
+      b.hidden = isToday;
+      if (isToday){ b.innerHTML = ""; }
+      else {
+        b.innerHTML = '正在补录 <b>'+esc(mdOf(editingDate))+'</b> 的记录'+
+                      '<button class="mini" id="backToday3" type="button">回到今天</button>';
+        var t = $("#backToday3");
+        if (t) t.addEventListener("click", goToday);
+      }
+    }
+    var dt = $("#drawerTitle");
+    if (dt) dt.textContent = isToday ? "今天的训练" : mdOf(editingDate) + " 的训练";
+    var sl = $("#savedLabel");
+    if (sl) sl.textContent = isToday ? "今天" : mdOf(editingDate);
+  }
+
+  function goToday(){
+    editingDate = TODAY;
+    loadFrom(findToday());
+    editing = false;
+    renderLibrary();
+    syncEntry();
   }
 
   function esc(s){ return String(s).replace(/[&<>"]/g, function(c){
@@ -726,14 +842,180 @@ button.primary.saved{background:#2E7D4F}
         var bits = [];
         if (total) bits.push(total.toLocaleString()+" kg");
         if (cmin) bits.push(cmin+" 分钟");
-        return '<div class="row">'+
-                 '<span class="dot" style="background:'+(PLACE_COLOR[ps[0]]||"#6B7280")+'"></span>'+
-                 '<span class="d">'+mm+"/"+dd+'</span>'+
-                 '<span class="p">'+esc(names)+'</span>'+
-                 '<span class="v">'+bits.join(" · ")+'</span>'+
-               '</div>';
+
+        var detail = (w.items||[]).map(function(it, idx){
+          return '<div class="li">'+
+                   '<span class="dot" style="background:'+colorOf(it.name)+'"></span>'+
+                   '<b>'+esc(it.name)+'</b>'+
+                   '<span class="sv">'+esc(itemSummary(it))+'</span>'+
+                   '<button class="del-x" type="button" data-day="'+w.date+'" data-idx="'+idx+'" title="删掉这个动作">✕</button>'+
+                 '</div>';
+        }).join("");
+        if (w.note) detail += '<p class="li-note">'+esc(w.note)+'</p>';
+        detail += '<button class="del-day" type="button" data-day="'+w.date+'">删除这一天的记录</button>';
+
+        return '<details>'+
+                 '<summary class="row">'+
+                   '<span class="dot" style="background:'+(PLACE_COLOR[ps[0]]||"#6B7280")+'"></span>'+
+                   '<span class="d">'+mm+"/"+dd+'</span>'+
+                   '<span class="p">'+esc(names)+'</span>'+
+                   '<span class="v">'+bits.join(" · ")+'</span>'+
+                 '</summary>'+
+                 '<div class="log-detail">'+detail+'</div>'+
+               '</details>';
       }).join("");
     }
+
+    renderMilestones();
+  }
+
+  /* ================= 里程碑（各器械历史最高重量） ================= */
+  var GROUP_ORDER = Object.keys(LIBRARY);
+
+  function renderMilestones(){
+    var box = $("#milestones");
+    var best = {};
+    workouts.forEach(function(wk){
+      (wk.items||[]).forEach(function(it){
+        if (it.cardio) return;
+        (it.sets||[]).forEach(function(s){
+          var v = Number(s.w) || 0;
+          if (v <= 0) return;
+          if (!best[it.name] || v > best[it.name]) best[it.name] = v;
+        });
+      });
+    });
+    var list = Object.keys(best).map(function(n){ return { name:n, w:best[n] }; });
+    if (!list.length){
+      box.innerHTML = '<p class="empty" style="padding:26px 10px">还没有记录。<br>练几次之后，这里会列出每台器械的最高重量。</p>';
+      return;
+    }
+    list.sort(function(a,b){
+      var pa = GROUP_ORDER.indexOf(PLACE_OF[a.name]); if (pa < 0) pa = GROUP_ORDER.length;
+      var pb = GROUP_ORDER.indexOf(PLACE_OF[b.name]); if (pb < 0) pb = GROUP_ORDER.length;
+      if (pa !== pb) return pa - pb;
+      return b.w - a.w;
+    });
+    box.innerHTML = list.map(function(x){
+      return '<div class="srow">'+
+               '<span class="dot" style="background:'+colorOf(x.name)+'"></span>'+
+               '<b>'+esc(x.name)+'</b>'+
+               '<span class="sv">'+x.w+' kg</span>'+
+             '</div>';
+    }).join("");
+  }
+
+  /* ================= 删除记录 ================= */
+  function closestByClass(el, cls){
+    while (el && el.nodeType === 1){
+      if (el.classList.contains(cls)) return el;
+      el = el.parentNode;
+    }
+    return null;
+  }
+
+  /* 不弹窗：第一次点把按钮变成确认态，再点一次才真删，3 秒不动就复原 */
+  function armConfirm(btn, armedText, fn){
+    if (btn.getAttribute("data-armed") === "1"){ fn(); return; }
+    btn.setAttribute("data-armed", "1");
+    btn.setAttribute("data-old", btn.textContent);
+    btn.textContent = armedText;
+    btn.classList.add("armed");
+    setTimeout(function(){
+      if (btn.getAttribute("data-armed") === "1"){
+        btn.setAttribute("data-armed", "0");
+        btn.textContent = btn.getAttribute("data-old");
+        btn.classList.remove("armed");
+      }
+    }, 3200);
+  }
+
+  function afterDataChange(date){
+    if (date === TODAY || date === editingDate){
+      loadFrom(findDate(editingDate));
+      editing = false;
+      renderLibrary();
+      syncEntry();
+    }
+    renderStats();
+  }
+
+  function removeDay(date){
+    workouts = workouts.filter(function(w){ return w.date !== date; });
+    saveAll();
+    afterDataChange(date);
+  }
+
+  function removeItem(date, idx){
+    var w = null;
+    workouts.forEach(function(x){ if (x.date === date) w = x; });
+    if (!w || !w.items) return;
+    w.items.splice(idx, 1);
+    if (!w.items.length){ removeDay(date); return; }   // 删空了就整天删掉
+    saveAll();
+    afterDataChange(date);
+  }
+
+  $("#logs").addEventListener("click", function(e){
+    var x = closestByClass(e.target, "del-x");
+    if (x){
+      armConfirm(x, "确定？", function(){
+        removeItem(x.getAttribute("data-day"), Number(x.getAttribute("data-idx")));
+      });
+      return;
+    }
+    var db = closestByClass(e.target, "del-day");
+    if (db){
+      armConfirm(db, "再点一次，删掉这一天", function(){
+        removeDay(db.getAttribute("data-day"));
+      });
+    }
+  });
+
+  /* ================= 破纪录检测 ================= */
+  /* 和「今天之前的最高重量 + 今天保存前的旧值」比，超了才算破纪录；
+     同一天反复编辑不会重复报，第一次做某台器械也不算破纪录 */
+  function newRecords(items){
+    var base = {};
+    function bump(n, v){ if (v > 0 && (!base[n] || v > base[n])) base[n] = v; }
+    workouts.forEach(function(w){
+      if (w.date === TODAY) return;
+      (w.items||[]).forEach(function(it){
+        if (it.cardio) return;
+        (it.sets||[]).forEach(function(s){ bump(it.name, Number(s.w)||0); });
+      });
+    });
+    var old = findToday();
+    if (old){
+      (old.items||[]).forEach(function(it){
+        if (it.cardio) return;
+        (it.sets||[]).forEach(function(s){ bump(it.name, Number(s.w)||0); });
+      });
+    }
+    var hits = [];
+    items.forEach(function(it){
+      if (it.cardio) return;
+      var top = 0;
+      (it.sets||[]).forEach(function(s){ var v = Number(s.w)||0; if (v > top) top = v; });
+      if (top > 0 && base[it.name] && top > base[it.name]) hits.push({ name:it.name, w:top, old:base[it.name] });
+    });
+    return hits;
+  }
+
+  var toastTimer = null;
+  function showToast(hits){
+    var t = $("#toast");
+    if (!t || !hits.length) return;
+    var rows = hits.slice(0,3).map(function(h){
+      return '<div class="pr"><span class="n">'+esc(h.name)+'</span>'+
+               '<span class="v">'+h.w+' kg</span>'+
+               '<span class="o">上次 '+h.old+' kg</span></div>';
+    }).join("");
+    if (hits.length > 3) rows += '<div class="pr"><span class="o" style="margin-left:0">…还有 '+(hits.length-3)+' 项</span></div>';
+    t.innerHTML = '<p class="th">新纪录</p>' + rows;
+    t.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ t.classList.remove("show"); }, 4600);
   }
 
   /* ================= 保存 ================= */
@@ -753,11 +1035,12 @@ button.primary.saved{background:#2E7D4F}
       }).filter(function(x){ return x.w || x.s || x.r; });
       return { name: name, sets: rows };
     });
+    var hits = (editingDate === TODAY) ? newRecords(items) : [];   // 补录历史时不做破纪录
     var t = new Date();
     var stamp = String(t.getHours()).padStart(2,"0")+":"+String(t.getMinutes()).padStart(2,"0")+" 保存";
-    var d = findToday();
+    var d = findDate(editingDate);
     if (d){ d.items = items; d.note = $("#note").value.trim(); d.savedAt = stamp; }
-    else workouts.push({ date:TODAY, items:items, note:$("#note").value.trim(), savedAt:stamp });
+    else workouts.push({ date:editingDate, items:items, note:$("#note").value.trim(), savedAt:stamp });
 
     saveAll();
     renderStats();
@@ -767,11 +1050,12 @@ button.primary.saved{background:#2E7D4F}
     btn.classList.add("saved");
     setTimeout(function(){
       editing = false;
-      loadFrom(findToday());
+      loadFrom(findDate(editingDate));   // 补录时停在那天的摘要上，不跳回今天
       $("#drawer").classList.remove("open");
       document.body.style.overflow = "";
       renderLibrary();
       syncEntry();
+      if (hits.length) showToast(hits);
     }, 620);
   });
 
@@ -954,7 +1238,8 @@ button.primary.saved{background:#2E7D4F}
 
   function applyParsed(){
     if (!parsed.length) return;
-    if (!editing) loadFrom(findToday());
+    var target = ($("#importDate") && $("#importDate").value) || TODAY;   // 导入面板上选的日期
+    if (target !== editingDate || !editing){ editingDate = target; loadFrom(findDate(target)); }
     editing = true;
 
     parsed.forEach(function(p){
@@ -991,11 +1276,31 @@ button.primary.saved{background:#2E7D4F}
   }
 
   $("#openImport").addEventListener("click", function(){
+    $("#importDate").value = editingDate;      // 默认记到当前这一天
     $("#sheet").classList.add("open");
     setTimeout(function(){ $("#importText").focus(); }, 90);
   });
   $("#closeImport").addEventListener("click", function(){ $("#sheet").classList.remove("open"); });
   $("#sheet").addEventListener("click", function(e){ if (e.target === $("#sheet")) $("#sheet").classList.remove("open"); });
+
+  /* 补录以前的记录 */
+  $("#openBackfill").addEventListener("click", function(){
+    var d = new Date(); d.setDate(d.getDate() - 1);
+    $("#backDate").value = keyOf(d);                    // 默认昨天
+    $("#backDate").setAttribute("max", TODAY);          // 以后的日子走「记录」页
+    $("#backSheet").classList.add("open");
+  });
+  $("#closeBack").addEventListener("click", function(){ $("#backSheet").classList.remove("open"); });
+  $("#backSheet").addEventListener("click", function(e){ if (e.target === $("#backSheet")) $("#backSheet").classList.remove("open"); });
+  $("#backGo").addEventListener("click", function(){
+    var v = $("#backDate").value;
+    if (!v) return;
+    $("#backSheet").classList.remove("open");
+    editingDate = v;
+    loadFrom(findDate(v));        // 那天已有记录就先读出来
+    editing = true;
+    openDrawer(false);
+  });
 
   $("#closeDrawer").addEventListener("click", closeDrawer);
   $("#moreMachine").addEventListener("click", closeDrawer);
@@ -1066,6 +1371,7 @@ button.primary.saved{background:#2E7D4F}
         }
 
         saveAll();
+        editingDate = TODAY;              // 导完备份回到今天
         loadFrom(findToday());
         editing = false;
         renderLibrary(); syncEntry(); renderStats();
