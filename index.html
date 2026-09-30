@@ -175,13 +175,35 @@ button.primary.saved{background:#2E7D4F}
 .entry-banner b{font-weight:600;color:var(--ink)}
 .entry-banner .mini{margin-left:auto;font-weight:600;color:var(--ink)}
 
+/* ---------- 折叠块（里程碑 / 管理记录） ---------- */
+.fold{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;
+  border:1px solid var(--line);background:var(--field);border-radius:10px;
+  padding:12px 14px;font:inherit;font-size:14px;color:var(--ink2);cursor:pointer;
+  transition:border-color .15s,color .15s}
+.fold:hover{border-color:var(--ink3);color:var(--ink)}
+.fold b{font-weight:600;color:var(--ink)}
+.fold .arw{width:6px;height:6px;flex:none;border-right:1.5px solid var(--ink3);border-bottom:1.5px solid var(--ink3);
+  transform:rotate(45deg) translateY(-1px);transition:transform .15s}
+.fold[aria-expanded="true"] .arw{transform:rotate(-135deg) translateY(-1px)}
+
+/* ---------- 里程碑：一台器械一栏，点开看它的曲线 ---------- */
+.ms-list{margin-top:14px}
+.ms-grp{margin-bottom:14px}
+.ms-gname{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;
+  letter-spacing:.06em;color:var(--ink3);margin-bottom:2px}
+.ms-gname .gdot{width:8px;height:8px;border-radius:50%;background:var(--gc);opacity:.55}
+.ms-item{border-bottom:1px solid var(--line)}
+.ms-row{display:flex;align-items:baseline;gap:8px;padding:11px 0;cursor:pointer;list-style:none}
+.ms-row::-webkit-details-marker{display:none}
+.ms-row b{font-size:14.5px;font-weight:600}
+.ms-row .ms-v{margin-left:auto;font-size:14px;font-weight:600;font-variant-numeric:tabular-nums}
+.ms-row .ms-c{font-size:12px;color:var(--ink3);flex:none;font-variant-numeric:tabular-nums}
+.ms-chart{padding:2px 0 14px}
+
 /* ---------- 折线图 ---------- */
-.chart{width:100%;height:auto;display:block;aspect-ratio:320/172}
+.chart{width:100%;height:auto;display:block}
 .chart text{font-size:8px;fill:var(--ink3);font-variant-numeric:tabular-nums}
 .chart .gl{stroke:var(--line);stroke-width:.7}
-.legend{display:flex;flex-wrap:wrap;gap:5px 14px;margin-top:12px;font-size:12.5px;color:var(--ink2)}
-.legend .lg{display:inline-flex;align-items:center;gap:5px}
-.legend .lg i{width:8px;height:8px;border-radius:50%;flex:none}
 
 /* ---------- 破纪录提示 ---------- */
 .toast{position:fixed;top:14px;left:50%;z-index:80;max-width:min(420px,calc(100% - 28px));
@@ -306,16 +328,15 @@ button.primary.saved{background:#2E7D4F}
       <div class="bars" id="bars"></div>
     </div>
     <div class="block">
-      <p class="label">里程碑 · 最高重量</p>
-      <div class="summary" id="milestones"></div>
+      <button class="fold" id="msOpen" type="button" aria-expanded="false">
+        <b>里程碑 · 重量趋势</b><span class="arw"></span>
+      </button>
+      <div class="ms-list" id="milestones" hidden></div>
     </div>
     <div class="block">
-      <p class="label">重量变化 · 按部位</p>
-      <div id="chart"></div>
-      <div class="legend" id="chartLegend"></div>
-    </div>
-    <div class="block">
-      <button class="ghost" id="manageOpen" type="button" style="width:100%">管理记录（查看 / 删除某一天）</button>
+      <button class="fold" id="manageOpen" type="button" aria-expanded="false">
+        <b>管理记录</b><span class="arw"></span>
+      </button>
       <div class="log-list" id="logs" style="margin-top:14px" hidden></div>
     </div>
 
@@ -838,7 +859,6 @@ button.primary.saved{background:#2E7D4F}
     }
 
     renderLogs();
-    renderChart();
     renderMilestones();
   }
 
@@ -888,131 +908,95 @@ button.primary.saved{background:#2E7D4F}
     }
   }
 
-  /* ================= 重量变化折线图（按部位各一条线） ================= */
-  function renderChart(){
-    var box = $("#chart"), lgBox = $("#chartLegend");
-    if (!box) return;
-
-    /* 所有训练日（升序、去重），最多看最近 30 个 */
-    var days = workouts.map(function(w){ return w.date; }).sort();
-    days = days.filter(function(d, i){ return days.indexOf(d) === i; });
-    if (!days.length){
-      box.innerHTML = '<p class="empty">还没有记录。<br>练几次之后，这里会画出各部位的重量变化。</p>';
-      if (lgBox) lgBox.innerHTML = "";
-      return;
-    }
-    var dates = days.slice(-30);
-    var pos = {};
-    dates.forEach(function(d, i){ pos[d] = i; });
-
-    /* 每个部位：那天练到的最高重量 */
-    var series = {};
-    workouts.forEach(function(w){
-      if (pos[w.date] == null) return;
-      (w.items || []).forEach(function(it){
-        if (it.cardio) return;
-        var place = PLACE_OF[it.name] || "其他";
-        var top = 0;
-        (it.sets || []).forEach(function(s){ var v = Number(s.w) || 0; if (v > top) top = v; });
-        if (!top) return;
-        var arr = series[place] || (series[place] = []);
-        var last = arr[arr.length - 1];
-        if (last && last.i === pos[w.date]){ if (top > last.v) last.v = top; }
-        else arr.push({ i:pos[w.date], v:top });
+  /* ================= 单台器械的重量折线（手写 SVG） ================= */
+  function machineSeries(name){
+    var out = [];
+    workouts.slice().sort(function(a,b){ return a.date < b.date ? -1 : 1; }).forEach(function(wk){
+      var top = 0;
+      (wk.items||[]).forEach(function(it){
+        if (it.name !== name) return;
+        (it.sets||[]).forEach(function(s){ var v = Number(s.w) || 0; if (v > top) top = v; });
       });
+      if (top > 0) out.push({ date:wk.date, v:top });
     });
+    return out;
+  }
 
-    var placeIdx = function(p){ var i = GROUP_ORDER.indexOf(p); return i < 0 ? GROUP_ORDER.length : i; };
-    var places = Object.keys(series).sort(function(a, b){ return placeIdx(a) - placeIdx(b); });
-    places.forEach(function(p){ series[p].sort(function(a, b){ return a.i - b.i; }); });
-
-    if (!places.length){
-      box.innerHTML = '<p class="empty">还没有力量训练的记录。</p>';
-      if (lgBox) lgBox.innerHTML = "";
-      return;
-    }
-
+  function lineSVG(pts, color){
+    if (!pts.length) return '<p class="empty" style="padding:14px 0">这台还没有重量记录。</p>';
+    var W = 320, H = 120, L = 30, R = 8, T = 12, B = 20;
     var maxV = 0;
-    places.forEach(function(p){ series[p].forEach(function(pt){ if (pt.v > maxV) maxV = pt.v; }); });
+    pts.forEach(function(p){ if (p.v > maxV) maxV = p.v; });
     maxV = Math.max(10, Math.ceil(maxV / 10) * 10);
-
-    var W = 320, H = 172, L = 30, R = 8, T = 14, B = 22;
-    var n = dates.length;
+    var n = pts.length;
     var X = function(i){ return n <= 1 ? (L + (W - L - R) / 2) : L + i * (W - L - R) / (n - 1); };
     var Y = function(v){ return H - B - (v / maxV) * (H - T - B); };
 
-    var svg = '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet" ' +
-              'role="img" aria-label="各部位重量随日期的变化">';
-
+    var svg = '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet" role="img">';
     [0, 0.5, 1].forEach(function(f){
       var v = maxV * f, yy = Y(v);
       svg += '<line class="gl" x1="' + L + '" y1="' + yy.toFixed(1) + '" x2="' + (W - R) + '" y2="' + yy.toFixed(1) + '"/>';
       svg += '<text x="' + (L - 5) + '" y="' + (yy + 3).toFixed(1) + '" text-anchor="end">' + v + '</text>';
     });
-    svg += '<text x="' + (L - 5) + '" y="' + (T - 4) + '" text-anchor="end">kg</text>';
-
-    places.forEach(function(p){
-      var col = PLACE_COLOR[p] || "#6B7280";
-      var pts = series[p];
-      if (pts.length > 1){
-        var d = pts.map(function(pt, k){ return (k ? "L" : "M") + X(pt.i).toFixed(1) + " " + Y(pt.v).toFixed(1); }).join(" ");
-        svg += '<path d="' + d + '" fill="none" stroke="' + col + '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>';
-      }
-      pts.forEach(function(pt){
-        svg += '<circle cx="' + X(pt.i).toFixed(1) + '" cy="' + Y(pt.v).toFixed(1) + '" r="2.6" fill="' + col + '"/>';
-      });
+    if (n > 1){
+      var d = pts.map(function(p, k){ return (k ? "L" : "M") + X(k).toFixed(1) + " " + Y(p.v).toFixed(1); }).join(" ");
+      svg += '<path d="' + d + '" fill="none" stroke="' + color + '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>';
+    }
+    pts.forEach(function(p, k){
+      svg += '<circle cx="' + X(k).toFixed(1) + '" cy="' + Y(p.v).toFixed(1) + '" r="2.6" fill="' + color + '"/>';
     });
-
-    if (n >= 2){
-      svg += '<text x="' + L + '" y="' + (H - 7) + '" text-anchor="start">' + md2(dates[0]) + '</text>';
-      if (n >= 5){
-        var mid = Math.floor((n - 1) / 2);
-        svg += '<text x="' + X(mid).toFixed(1) + '" y="' + (H - 7) + '" text-anchor="middle">' + md2(dates[mid]) + '</text>';
-      }
-      svg += '<text x="' + (W - R) + '" y="' + (H - 7) + '" text-anchor="end">' + md2(dates[n - 1]) + '</text>';
+    svg += '<text x="' + L + '" y="' + (H - 6) + '" text-anchor="start">' + md2(pts[0].date) + '</text>';
+    if (n >= 3){
+      svg += '<text x="' + X(n - 1).toFixed(1) + '" y="' + (H - 6) + '" text-anchor="end">' + md2(pts[n - 1].date) + '</text>';
     }
     svg += '</svg>';
-    box.innerHTML = svg;
-
-    if (lgBox){
-      lgBox.innerHTML = places.map(function(p){
-        return '<span class="lg"><i style="background:' + (PLACE_COLOR[p] || "#6B7280") + '"></i>' + esc(p) + '</span>';
-      }).join("");
-    }
+    return svg;
   }
 
-  /* ================= 里程碑（各器械历史最高重量） ================= */
+  /* ================= 里程碑：一台器械一栏，点开看它自己的重量曲线 ================= */
   var GROUP_ORDER = Object.keys(LIBRARY);
 
   function renderMilestones(){
     var box = $("#milestones");
-    var best = {};
+    var best = {};                        // 器械名 -> { w:最高重量, n:练过几次 }
     workouts.forEach(function(wk){
       (wk.items||[]).forEach(function(it){
         if (it.cardio) return;
-        (it.sets||[]).forEach(function(s){
-          var v = Number(s.w) || 0;
-          if (v <= 0) return;
-          if (!best[it.name] || v > best[it.name]) best[it.name] = v;
-        });
+        var top = 0;
+        (it.sets||[]).forEach(function(s){ var v = Number(s.w) || 0; if (v > top) top = v; });
+        if (top <= 0) return;
+        if (!best[it.name]) best[it.name] = { w:0, n:0 };
+        best[it.name].n++;
+        if (top > best[it.name].w) best[it.name].w = top;
       });
     });
-    var list = Object.keys(best).map(function(n){ return { name:n, w:best[n] }; });
-    if (!list.length){
-      box.innerHTML = '<p class="empty" style="padding:26px 10px">还没有记录。<br>练几次之后，这里会列出每台器械的最高重量。</p>';
+
+    /* 按部位分组，组内按最高重量降序 —— 器械多了也能一眼找到 */
+    var byPlace = {};
+    Object.keys(best).forEach(function(n){
+      var p = PLACE_OF[n] || "其他";
+      (byPlace[p] || (byPlace[p] = [])).push(n);
+    });
+    var groups = GROUP_ORDER.filter(function(g){ return byPlace[g] && byPlace[g].length; });
+    if (!groups.length){
+      box.innerHTML = '<p class="empty" style="padding:24px 10px">还没有记录。<br>练几次之后，这里会按器械列出重量曲线。</p>';
       return;
     }
-    list.sort(function(a,b){
-      var pa = GROUP_ORDER.indexOf(PLACE_OF[a.name]); if (pa < 0) pa = GROUP_ORDER.length;
-      var pb = GROUP_ORDER.indexOf(PLACE_OF[b.name]); if (pb < 0) pb = GROUP_ORDER.length;
-      if (pa !== pb) return pa - pb;
-      return b.w - a.w;
-    });
-    box.innerHTML = list.map(function(x){
-      return '<div class="srow">'+
-               '<span class="dot" style="background:'+colorOf(x.name)+'"></span>'+
-               '<b>'+esc(x.name)+'</b>'+
-               '<span class="sv">'+x.w+' kg</span>'+
+
+    box.innerHTML = groups.map(function(g){
+      var names = byPlace[g].sort(function(a, b){ return best[b].w - best[a].w; });
+      return '<div class="ms-grp" style="--gc:'+(PLACE_COLOR[g] || "#6B7280")+'">'+
+               '<p class="ms-gname"><span class="gdot"></span>'+esc(g)+'</p>'+
+               names.map(function(n){
+                 return '<details class="ms-item" data-name="'+esc(n)+'">'+
+                          '<summary class="ms-row">'+
+                            '<b>'+esc(n)+'</b>'+
+                            '<span class="ms-v">'+best[n].w+' kg</span>'+
+                            '<span class="ms-c">'+best[n].n+' 次</span>'+
+                          '</summary>'+
+                          '<div class="ms-chart"></div>'+
+                        '</details>';
+               }).join("")+
              '</div>';
     }).join("");
   }
@@ -1071,8 +1055,25 @@ button.primary.saved{background:#2E7D4F}
   $("#manageOpen").addEventListener("click", function(){
     var lg = $("#logs");
     lg.hidden = !lg.hidden;
-    this.textContent = lg.hidden ? "管理记录（查看 / 删除某一天）" : "收起记录列表";
+    this.setAttribute("aria-expanded", String(!lg.hidden));
   });
+
+  $("#msOpen").addEventListener("click", function(){
+    var box = $("#milestones");
+    box.hidden = !box.hidden;
+    this.setAttribute("aria-expanded", String(!box.hidden));
+  });
+
+  /* 展开某一台才去画它的曲线（器械再多也不怕，不点就不画） */
+  $("#milestones").addEventListener("toggle", function(e){
+    var det = e.target;
+    if (!det || det.tagName !== "DETAILS" || !det.open) return;
+    var box = det.querySelector(".ms-chart");
+    if (box && !box.innerHTML){
+      var name = det.getAttribute("data-name");
+      box.innerHTML = lineSVG(machineSeries(name), colorOf(name));
+    }
+  }, true);
 
   $("#logs").addEventListener("click", function(e){
     var x = closestByClass(e.target, "del-x");
