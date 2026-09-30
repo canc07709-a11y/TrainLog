@@ -199,6 +199,7 @@ button.primary.saved{background:#2E7D4F}
 .ms-row .ms-v{margin-left:auto;font-size:14px;font-weight:600;font-variant-numeric:tabular-nums}
 .ms-row .ms-c{font-size:12px;color:var(--ink3);flex:none;font-variant-numeric:tabular-nums}
 .ms-chart{padding:2px 0 14px}
+.ms-note{font-size:12px;color:var(--ink3);margin-top:-6px}
 
 /* ---------- 折线图 ---------- */
 .chart{width:100%;height:auto;display:block}
@@ -922,35 +923,84 @@ button.primary.saved{background:#2E7D4F}
     return out;
   }
 
+  /* 记录一多，点就挤成一团：自动按周 / 按月合并（各取那段的最高重量） */
+  function groupPoints(pts){
+    var LIMIT = 14;
+    if (pts.length <= LIMIT) return { pts:pts, note:"" };
+
+    var wk = {}, wOrder = [];
+    pts.forEach(function(p){
+      var d = new Date(p.date + "T00:00:00");
+      d.setDate(d.getDate() - ((d.getDay() + 6) % 7));          /* 回到本周一 */
+      var k = keyOf(d);
+      if (!wk[k]){ wk[k] = { date:k, v:0, unit:"周" }; wOrder.push(k); }
+      if (p.v > wk[k].v) wk[k].v = p.v;
+    });
+    if (wOrder.length <= 20){
+      return { pts:wOrder.map(function(k){ return wk[k]; }), note:"记录较多，已按周合并（每周取最高重量）" };
+    }
+
+    var mo = {}, mOrder = [];
+    pts.forEach(function(p){
+      var k = p.date.slice(0,7);
+      if (!mo[k]){ mo[k] = { date:k + "-01", v:0, unit:"月" }; mOrder.push(k); }
+      if (p.v > mo[k].v) mo[k].v = p.v;
+    });
+    return { pts:mOrder.map(function(k){ return mo[k]; }), note:"记录很多，已按月合并（每月取最高重量）" };
+  }
+
   function lineSVG(pts, color){
     if (!pts.length) return '<p class="empty" style="padding:14px 0">这台还没有重量记录。</p>';
-    var W = 320, H = 120, L = 30, R = 8, T = 12, B = 20;
+    var g = groupPoints(pts), ps = g.pts;
+
+    var W = 320, H = 140, L = 30, R = 12, T = 24, B = 22;
     var maxV = 0;
-    pts.forEach(function(p){ if (p.v > maxV) maxV = p.v; });
+    ps.forEach(function(p){ if (p.v > maxV) maxV = p.v; });
     maxV = Math.max(10, Math.ceil(maxV / 10) * 10);
-    var n = pts.length;
+    var n = ps.length;
     var X = function(i){ return n <= 1 ? (L + (W - L - R) / 2) : L + i * (W - L - R) / (n - 1); };
     var Y = function(v){ return H - B - (v / maxV) * (H - T - B); };
+    var lab = function(p){ return p.unit === "月" ? Number(p.date.slice(5,7)) + "月" : md2(p.date); };
 
     var svg = '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet" role="img">';
+
     [0, 0.5, 1].forEach(function(f){
       var v = maxV * f, yy = Y(v);
       svg += '<line class="gl" x1="' + L + '" y1="' + yy.toFixed(1) + '" x2="' + (W - R) + '" y2="' + yy.toFixed(1) + '"/>';
       svg += '<text x="' + (L - 5) + '" y="' + (yy + 3).toFixed(1) + '" text-anchor="end">' + v + '</text>';
     });
     if (n > 1){
-      var d = pts.map(function(p, k){ return (k ? "L" : "M") + X(k).toFixed(1) + " " + Y(p.v).toFixed(1); }).join(" ");
+      var d = ps.map(function(p, k){ return (k ? "L" : "M") + X(k).toFixed(1) + " " + Y(p.v).toFixed(1); }).join(" ");
       svg += '<path d="' + d + '" fill="none" stroke="' + color + '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>';
     }
-    pts.forEach(function(p, k){
+    ps.forEach(function(p, k){
       svg += '<circle cx="' + X(k).toFixed(1) + '" cy="' + Y(p.v).toFixed(1) + '" r="2.6" fill="' + color + '"/>';
     });
-    svg += '<text x="' + L + '" y="' + (H - 6) + '" text-anchor="start">' + md2(pts[0].date) + '</text>';
-    if (n >= 3){
-      svg += '<text x="' + X(n - 1).toFixed(1) + '" y="' + (H - 6) + '" text-anchor="end">' + md2(pts[n - 1].date) + '</text>';
-    }
+
+    /* 点上标出具体重量：点少时全标；点多了只标第一个、最高的、最新的 */
+    var maxI = 0;
+    ps.forEach(function(p, k){ if (p.v > ps[maxI].v) maxI = k; });
+    var marks = {};
+    if (n <= 8){ ps.forEach(function(p, k){ marks[k] = 1; }); }
+    else { marks[0] = 1; marks[maxI] = 1; marks[n - 1] = 1; }
+    Object.keys(marks).forEach(function(k){
+      var i = Number(k), yy = Y(ps[i].v), above = yy > T + 12;
+      svg += '<text x="' + X(i).toFixed(1) + '" y="' + (above ? yy - 6 : yy + 12).toFixed(1) +
+             '" text-anchor="middle" style="fill:' + color + ';font-size:9px;font-weight:600">' + ps[i].v + '</text>';
+    });
+
+    /* x 轴日期：最多标 5~6 个，均匀铺开（原来只标首尾，太稀） */
+    var step = Math.max(1, Math.ceil(n / 5));
+    var ticks = [];
+    for (var ti = 0; ti < n; ti += step) ticks.push(ti);
+    if (ticks[ticks.length - 1] !== n - 1) ticks.push(n - 1);
+    ticks.forEach(function(i){
+      var anchor = (n === 1) ? "middle" : (i === 0 ? "start" : (i === n - 1 ? "end" : "middle"));
+      svg += '<text x="' + X(i).toFixed(1) + '" y="' + (H - 6) + '" text-anchor="' + anchor + '">' + lab(ps[i]) + '</text>';
+    });
     svg += '</svg>';
-    return svg;
+
+    return svg + (g.note ? '<p class="ms-note">' + g.note + '</p>' : "");
   }
 
   /* ================= 里程碑：一台器械一栏，点开看它自己的重量曲线 ================= */
