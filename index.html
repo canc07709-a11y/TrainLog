@@ -290,6 +290,9 @@ button.primary.saved{background:#2E7D4F}
 .import-open[hidden]{display:none}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="theme-color" content="#EBEDF0">
+<link rel="apple-touch-icon" href="./icon-192.png">
 </head>
 <body>
 <main class="app">
@@ -442,7 +445,7 @@ button.primary.saved{background:#2E7D4F}
     "胸": ["坐姿推胸机","上斜推胸机","蝴蝶机","龙门架夹胸","史密斯机","双杠臂屈伸","杠铃卧推","哑铃卧推","哑铃飞鸟"],
     "背": ["高位下拉","坐姿划船机","器械划船","反向飞鸟机","引体向上","杠铃划船","哑铃单臂划船","坐姿直臂下压","T杠划船"],
     "腿": ["腿举机","腿屈伸机","腿弯举机","哈克深蹲","史密斯深蹲","杠铃深蹲","箭步蹲","臀推机","髋内收机","髋外展机","坐姿提踵机"],
-    "肩": ["肩推机","侧平举机","反向蝴蝶机","杠铃推举","哑铃推举","哑铃侧平举","面拉"],
+    "肩": ["肩推机","反向蝴蝶机","杠铃推举","哑铃推举","哑铃侧平举","面拉"],
     "手臂": ["二头弯举机","牧师凳弯举","三头臂屈伸机","绳索下压","哑铃弯举","锤式弯举","窄距卧推"],
     "核心": ["卷腹机","罗马椅","悬垂举腿","绳索卷腹","平板支撑"],
     "有氧": ["跑步机","椭圆机","动感单车","划船机","登山机","踏步机","跳绳"],
@@ -476,6 +479,21 @@ button.primary.saved{background:#2E7D4F}
 
   var custom  = store.get("custom", []);      // 用户自己加的器械
   var workouts= store.get("workouts", []);
+
+  /* 器械改名对照表：老名字 -> 清单里的新名字。
+     启动时（和导入备份后）跑一遍，把历史记录里的老名字统一改过去——
+     数据一条不丢，统计也不会因为改名掉到「其他」里。
+     以后要合并/纠正某个器械名，在这里加一行就行。 */
+  var RENAME = { "侧平举机":"哑铃侧平举" };
+  function migrateNames(){
+    var changed = false;
+    workouts.forEach(function(w){
+      (w.items || []).forEach(function(it){
+        if (RENAME[it.name]){ it.name = RENAME[it.name]; changed = true; }
+      });
+    });
+    if (changed) store.set("workouts", workouts);
+  }
   var picked  = [];                            // 今天选中的器械（有序）
   var draft   = {};                            // 器械名 -> [{w,s,r}]
   var draftCardio = {};                        // 有氧器械名 -> {min, resist, speed, ...}
@@ -1685,6 +1703,7 @@ button.primary.saved{background:#2E7D4F}
           });
         }
 
+        migrateNames();                   // 旧备份里的老器械名也顺带改过来
         saveAll();
         editingDate = TODAY;              // 导完备份回到今天
         loadFrom(findToday());
@@ -1697,12 +1716,21 @@ button.primary.saved{background:#2E7D4F}
     input.click();
   });
 
+  migrateNames();
   loadFrom(findToday());
   editing = false;
   renderLibrary();
   syncEntry();
   renderStats();
 })();
+</script>
+<script>
+/* 注册 Service Worker（PWA 离线缓存）。这段必须在主 IIFE 外面 */
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", function () {
+    navigator.serviceWorker.register("./sw.js").catch(function () {});
+  });
+}
 </script>
 </body>
 </html>
