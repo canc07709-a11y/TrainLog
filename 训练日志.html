@@ -1,0 +1,1393 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>训练日志</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --paper:#EBEDF0;
+  --card:#FFFFFF;
+  --ink:#181B20;
+  --ink2:#5C636C;
+  --ink3:#9AA1AA;
+  --line:#E3E6EB;
+  --field:#F5F6F8;
+  --red:#C1352B;
+  --focus:#181B20;
+  --r:13px;
+}
+html{-webkit-text-size-adjust:100%}
+body{
+  background:var(--paper);color:var(--ink);
+  font:16px/1.5 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei","Segoe UI",Roboto,sans-serif;
+  -webkit-font-smoothing:antialiased;
+  display:flex;justify-content:center;min-height:100vh;
+}
+.app{width:100%;max-width:460px;background:var(--card);min-height:100vh;padding:26px 20px 48px}
+
+.top{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:22px}
+.top h1{font-size:19px;font-weight:600;letter-spacing:.01em}
+.top time{font-size:13px;color:var(--ink3);font-variant-numeric:tabular-nums}
+
+.tabs{display:flex;gap:4px;background:var(--field);border-radius:10px;padding:4px;margin-bottom:26px}
+.tabs button{flex:1;border:0;background:none;font:inherit;font-size:14px;color:var(--ink2);
+  padding:8px 0;border-radius:7px;cursor:pointer;transition:background .15s,color .15s}
+.tabs button[aria-selected="true"]{background:var(--card);color:var(--ink);font-weight:600;box-shadow:0 1px 3px rgba(20,24,30,.1)}
+
+.label{font-size:12px;font-weight:600;letter-spacing:.06em;color:var(--ink3);margin-bottom:10px}
+.block{margin-bottom:26px}
+.hint{font-size:13px;color:var(--ink3);margin-top:10px}
+button.ghost{border:1px dashed var(--line);background:none;font:inherit;font-size:13.5px;color:var(--ink2);
+  padding:8px 14px;border-radius:9px;cursor:pointer;transition:border-color .15s,color .15s}
+button.ghost:hover{border-color:var(--ink3);color:var(--ink)}
+button.ghost:focus-visible,button.primary:focus-visible,.chip:focus-visible,.gname:focus-visible,
+input:focus-visible,textarea:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+
+/* ---------- 搜索 ---------- */
+.searchbox{position:relative;margin-bottom:18px}
+.searchbox svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:16px;height:16px;
+  stroke:var(--ink3);fill:none;stroke-width:2;pointer-events:none}
+#search{width:100%;border:1px solid var(--line);background:var(--field);border-radius:10px;
+  padding:11px 13px 11px 36px;font:inherit;font-size:14.5px;color:var(--ink)}
+#search::placeholder{color:var(--ink3)}
+#search::-webkit-search-cancel-button{-webkit-appearance:none}
+
+/* ---------- 器械库 ---------- */
+.grp{margin-bottom:16px}
+.gname{display:inline-flex;align-items:center;gap:7px;border:0;background:none;font:inherit;
+  font-size:12px;font-weight:700;letter-spacing:.06em;color:var(--ink3);
+  padding:3px 8px 3px 4px;margin:0 0 8px -4px;border-radius:7px;cursor:pointer;transition:background .15s,color .15s}
+.gname .gdot{width:8px;height:8px;border-radius:50%;background:var(--gc);opacity:.42;transition:opacity .15s}
+.gname:hover{background:var(--field);color:var(--ink2)}
+.gname[aria-pressed="true"]{color:var(--gc);background:transparent}
+.gname[aria-pressed="true"] .gdot{opacity:1}
+.chips{display:flex;flex-wrap:wrap;gap:7px}
+.chip{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);background:var(--card);
+  font:inherit;font-size:14px;color:var(--ink2);padding:7px 13px;border-radius:999px;cursor:pointer;
+  transition:border-color .15s,background .15s,color .15s}
+.chip .dot{width:7px;height:7px;border-radius:50%;flex:none;background:currentColor;opacity:.34}
+.chip[aria-pressed="true"]{color:var(--cc);border-color:currentColor}
+.chip[aria-pressed="true"] .dot{opacity:1;background:var(--cc)}
+.noresult{font-size:14px;color:var(--ink3);padding:6px 0 2px}
+
+/* ---------- 已选器械 ---------- */
+.item{border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:10px}
+.item-head{display:flex;align-items:center;gap:9px;margin-bottom:12px}
+.item-head .dot{width:10px;height:10px;border-radius:50%;flex:none;background:var(--cc)}
+.item-head b{font-size:15px;font-weight:600}
+.item-head button{margin-left:auto;border:0;background:none;color:var(--ink3);font:inherit;
+  font-size:14px;cursor:pointer;padding:2px 0;line-height:1;transition:color .15s}
+.item-head button:hover{color:var(--red)}
+.set{display:flex;align-items:stretch;gap:8px;margin-bottom:8px}
+
+/* 参数格（力量行 / 有氧行共用）：数字在上，标签+单位在下，三格等高对齐 */
+.cfields{display:flex;gap:8px}
+.cf{flex:1;min-width:0;background:var(--field);border-radius:10px;padding:9px 5px 8px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+.cf input{border:0;background:none;font:inherit;font-size:22px;font-weight:650;color:var(--ink);
+  text-align:center;width:100%;min-width:0;font-variant-numeric:tabular-nums;line-height:1.15;padding:0}
+.cf input::placeholder{color:var(--ink3);font-weight:400}
+.cf .cl{display:flex;align-items:baseline;gap:3px;justify-content:center;line-height:1}
+.cf b{font-size:12px;font-weight:600;color:var(--ink2)}
+.cf i{font-size:10.5px;font-style:normal;color:var(--ink3)}
+.cf:focus-within{background:#fff;box-shadow:inset 0 0 0 1px var(--line)}
+/* 去掉数字框右侧的上下箭头，数字才能真正居中 */
+.cf input[type=number]::-webkit-outer-spin-button,
+.cf input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.cf input[type=number]{-moz-appearance:textfield;appearance:textfield}
+
+.mini{font-size:13px;color:var(--ink3);border:0;background:none;font-family:inherit;
+  padding:4px 2px;cursor:pointer;transition:color .15s}
+.mini:hover{color:var(--ink)}
+
+textarea{width:100%;min-height:76px;resize:vertical;border:0;background:var(--field);
+  border-radius:var(--r);padding:13px 14px;font:inherit;font-size:15px;color:var(--ink)}
+textarea::placeholder{color:var(--ink3)}
+
+button.primary{width:100%;border:0;border-radius:12px;background:var(--ink);color:#fff;
+  font:inherit;font-size:15.5px;font-weight:600;padding:15px 0;cursor:pointer;margin-top:6px;transition:opacity .15s}
+button.primary:hover{opacity:.88}
+button.primary.saved{background:#2E7D4F}
+
+.summary{border:1px solid var(--line);border-radius:var(--r);padding:16px}
+.summary-head{display:flex;align-items:center;margin-bottom:4px}
+.summary-head time{margin-left:auto;font-size:12.5px;color:var(--ink3);font-variant-numeric:tabular-nums}
+.srow{display:flex;align-items:baseline;gap:8px;padding:7px 0;border-bottom:1px solid var(--line)}
+.srow:last-of-type{border-bottom:0}
+.srow .dot{width:8px;height:8px;border-radius:50%;flex:none;transform:translateY(-1px)}
+.srow b{font-size:14.5px;font-weight:600}
+.srow .sv{margin-left:auto;font-size:13px;color:var(--ink2);font-variant-numeric:tabular-nums;text-align:right}
+.summary .note{margin-top:12px;font-size:14px;color:var(--ink2);white-space:pre-wrap}
+
+.stat-figure{font-size:52px;font-weight:680;letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1.05}
+.stat-figure small{font-size:16px;font-weight:500;color:var(--ink3);margin-left:4px;letter-spacing:0}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;max-width:286px;margin:0 auto}
+.grid i{display:block;aspect-ratio:1;border-radius:3px;background:var(--field)}
+.grid i[data-on="1"]{background:var(--gc)}
+.bars{display:flex;flex-direction:column;gap:11px}
+.bar{display:flex;align-items:center;gap:11px;font-size:14px}
+.bar .name{width:42px;flex:none;color:var(--ink2)}
+.bar .track{flex:1;height:8px;background:var(--field);border-radius:99px;overflow:hidden}
+.bar .track i{display:block;height:100%;border-radius:99px;background:var(--gc);transition:width .35s ease}
+.bar .n{width:22px;text-align:right;flex:none;color:var(--ink3);font-variant-numeric:tabular-nums;font-size:13px}
+.log-list{border-top:1px solid var(--line)}
+.log-list .row{display:flex;align-items:baseline;gap:10px;padding:12px 0;border-bottom:1px solid var(--line)}
+.log-list .row .dot{width:8px;height:8px;border-radius:50%;flex:none;transform:translateY(-1px)}
+.log-list .row .d{font-size:12.5px;color:var(--ink3);font-variant-numeric:tabular-nums;width:52px;flex:none}
+.log-list .row .p{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.log-list .row .v{margin-left:auto;font-size:12.5px;color:var(--ink3);font-variant-numeric:tabular-nums;flex:none;padding-left:8px}
+.empty{text-align:center;color:var(--ink3);font-size:14px;padding:40px 20px;line-height:1.7}
+
+/* ---------- 记录条目：展开看细节 / 删除 ---------- */
+.log-list details{border-bottom:1px solid var(--line)}
+.log-list details>summary.row{border-bottom:0;cursor:pointer;list-style:none}
+.log-list details>summary.row::-webkit-details-marker{display:none}
+.log-list details>summary.row::after{content:"";width:6px;height:6px;flex:none;margin-left:8px;
+  align-self:center;border-right:1.5px solid var(--ink3);border-bottom:1.5px solid var(--ink3);
+  transform:rotate(45deg) translateY(-1px);transition:transform .15s}
+.log-list details[open]>summary.row::after{transform:rotate(-135deg) translateY(-1px)}
+.log-detail{padding:2px 0 13px;border-top:1px dashed var(--line)}
+.log-detail .li{display:flex;align-items:center;gap:8px;padding:9px 0;font-size:13.5px}
+.log-detail .li .dot{width:8px;height:8px;border-radius:50%;flex:none}
+.log-detail .li b{font-weight:600}
+.log-detail .li .sv{margin-left:auto;color:var(--ink2);font-variant-numeric:tabular-nums;
+  font-size:12.5px;text-align:right;padding-left:8px}
+.log-detail .li-note{font-size:13px;color:var(--ink3);padding:6px 0 0;white-space:pre-wrap}
+
+.del-x{flex:none;border:0;background:none;font:inherit;font-size:15px;color:var(--ink3);
+  cursor:pointer;padding:2px 4px;line-height:1;border-radius:7px;transition:color .15s,background .15s}
+.del-x:hover{color:var(--red)}
+.del-x.armed{color:#fff;background:var(--red);font-size:12.5px;font-weight:600;padding:4px 9px}
+.del-day{width:100%;margin-top:4px;border:1px solid var(--line);background:none;font:inherit;
+  font-size:13px;color:var(--ink3);padding:10px 0;border-radius:9px;cursor:pointer;
+  transition:color .15s,border-color .15s,background .15s}
+.del-day:hover{color:var(--red);border-color:var(--red)}
+.del-day.armed{color:#fff;background:var(--red);border-color:var(--red);font-weight:600}
+
+/* ---------- 日期 / 补录 ---------- */
+.datein{border:1px solid var(--line);background:var(--field);border-radius:10px;padding:11px 13px;
+  font:inherit;font-size:15px;color:var(--ink);width:100%;font-variant-numeric:tabular-nums}
+.entry-banner{display:flex;align-items:center;gap:8px;background:var(--field);border-radius:10px;
+  padding:11px 13px;font-size:13.5px;color:var(--ink2);margin:0 0 18px}
+.entry-banner[hidden]{display:none}
+.entry-banner b{font-weight:600;color:var(--ink)}
+.entry-banner .mini{margin-left:auto;font-weight:600;color:var(--ink)}
+
+/* ---------- 破纪录提示 ---------- */
+.toast{position:fixed;top:14px;left:50%;z-index:80;max-width:min(420px,calc(100% - 28px));
+  background:var(--ink);color:#fff;border-radius:13px;padding:13px 16px 14px;
+  box-shadow:0 12px 34px rgba(20,24,30,.3);
+  transform:translate(-50%,-170%);opacity:0;pointer-events:none;
+  transition:transform .3s cubic-bezier(.32,.72,0,1),opacity .3s}
+.toast.show{transform:translate(-50%,0);opacity:1}
+.toast .th{font-size:11px;font-weight:700;letter-spacing:.12em;color:#E9BE4E;margin-bottom:7px}
+.toast .pr{display:flex;align-items:baseline;gap:8px;font-size:14px;padding:2px 0}
+.toast .pr .n{font-weight:600}
+.toast .pr .v{font-variant-numeric:tabular-nums;font-weight:600}
+.toast .pr .o{margin-left:auto;font-size:12px;color:rgba(255,255,255,.6);
+  font-variant-numeric:tabular-nums;padding-left:10px}
+
+/* ---------- 导入 ---------- */
+.import-open{width:100%;display:flex;align-items:center;gap:9px;border:1px solid var(--line);
+  background:var(--field);border-radius:10px;padding:12px 14px;font:inherit;font-size:14px;
+  color:var(--ink2);cursor:pointer;margin-bottom:18px;text-align:left;transition:border-color .15s,color .15s}
+.import-open:hover{border-color:var(--ink3);color:var(--ink)}
+.import-open b{font-weight:600;color:var(--ink);margin-right:auto}
+.sheet{position:fixed;inset:0;background:rgba(20,24,30,.42);z-index:50;display:flex;
+  align-items:flex-end;justify-content:center;
+  visibility:hidden;opacity:0;pointer-events:none;
+  transition:opacity .24s ease,visibility .24s}
+.sheet.open{visibility:visible;opacity:1;pointer-events:auto}
+.sheet-in{width:100%;max-width:460px;background:var(--card);border-radius:18px 18px 0 0;
+  padding:20px 20px 26px;max-height:94vh;overflow:auto;
+  transform:translateY(100%);transition:transform .3s cubic-bezier(.32,.72,0,1)}
+.sheet.open .sheet-in{transform:translateY(0)}
+.sheet-top{display:flex;align-items:center;margin-bottom:16px}
+.sheet-top b{font-size:16px;font-weight:600}
+.sheet-top button{margin-left:auto;border:0;background:none;font:inherit;font-size:16px;
+  color:var(--ink3);cursor:pointer;line-height:1;padding:2px 0}
+#importText{width:100%;min-height:170px;resize:vertical;border:1px solid var(--line);
+  background:var(--field);border-radius:var(--r);padding:13px 14px;font:inherit;font-size:14px;
+  color:var(--ink);line-height:1.65}
+#importText::placeholder{color:var(--ink3)}
+.prow{display:flex;align-items:baseline;gap:8px;padding:10px 0;border-bottom:1px solid var(--line);
+  font-size:14px;flex-wrap:wrap}
+.prow .pn{font-weight:600}
+.prow .map{font-size:12px;color:#2E7D4F;flex:none}
+.prow .map.new{color:var(--ink3)}
+.prow .pv{margin-left:auto;color:var(--ink2);font-variant-numeric:tabular-nums;font-size:13px}
+.sheet-actions{display:flex;gap:10px;margin-top:20px}
+.sheet-actions .ghost{flex:1;border-style:solid;padding:13px 0;text-align:center;font-size:14.5px}
+.sheet-actions .primary{flex:1.4;margin:0;padding:14px 0}
+.sheet-actions .primary:disabled{opacity:.38;cursor:default}
+.parse-note{font-size:13px;color:var(--ink3);margin-top:14px}
+.data-actions{display:flex;gap:10px;margin-bottom:10px}
+.data-actions .ghost{flex:1;border-style:solid;text-align:center;padding:12px 0}
+
+/* ---------- 记录抽屉 ---------- */
+.drawer-in{width:100%;max-width:460px;background:var(--card);border-radius:18px 18px 0 0;
+  max-height:88vh;display:flex;flex-direction:column;
+  transform:translateY(100%);transition:transform .3s cubic-bezier(.32,.72,0,1)}
+.sheet.open .drawer-in{transform:translateY(0)}
+.drawer-top{position:relative;flex:none;display:flex;align-items:center;padding:17px 20px 10px}
+.drawer-top i{position:absolute;top:7px;left:50%;transform:translateX(-50%);width:36px;height:4px;
+  border-radius:99px;background:var(--line)}
+.drawer-top b{font-size:16px;font-weight:600}
+.drawer-top button{margin-left:auto;border:0;background:none;font:inherit;font-size:16px;
+  color:var(--ink3);cursor:pointer;line-height:1;padding:2px 0}
+.drawer-body{flex:1;overflow:auto;padding:2px 20px 0;-webkit-overflow-scrolling:touch}
+.drawer-foot{flex:none;padding:12px 20px 24px;border-top:1px solid var(--line);margin-top:14px}
+.drawer-foot .primary{margin-top:0}
+.import-open[hidden]{display:none}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<main class="app">
+
+  <header class="top">
+    <h1>训练日志</h1>
+    <time id="today"></time>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button role="tab" data-view="log" aria-selected="true">记录</button>
+    <button role="tab" data-view="stats" aria-selected="false">统计</button>
+  </nav>
+
+  <section id="view-log">
+    <button class="import-open" id="openImport" type="button">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6v11.2M8.4 11.2l3.6 3.6 3.6-3.6"/><path d="M5.4 15.6v3a1.8 1.8 0 0 0 1.8 1.8h9.6a1.8 1.8 0 0 0 1.8-1.8v-3"/></svg>
+      <b>从文本导入今天的计划</b>
+    </button>
+    <p class="hint" style="margin:-8px 0 20px"><button class="ghost" id="openBackfill" type="button">补录以前的记录</button></p>
+    <div class="entry-banner" id="entryBanner" hidden></div>
+    <div class="block">
+      <p class="label">今天练什么</p>
+      <div class="searchbox">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg>
+        <input id="search" type="search" placeholder="搜器械，比如「推胸」「下拉」" autocomplete="off">
+      </div>
+      <div id="library"></div>
+      <p class="hint"><button class="ghost" id="addMachine">＋ 添加清单里没有的</button></p>
+    </div>
+
+    <button class="import-open" id="reopenDrawer" type="button" hidden>
+      <span id="pendText">继续填写今天的训练</span>
+    </button>
+
+    <div class="block" id="savedBlock" hidden>
+      <p class="label" id="savedLabel">今天</p>
+      <div id="savedBox"></div>
+    </div>
+  </section>
+
+  <section id="view-stats" hidden>
+    <div class="block">
+      <p class="label">本月练了</p>
+      <p class="stat-figure" id="mCount">0<small>天</small></p>
+    </div>
+    <div class="block">
+      <p class="label">最近八周</p>
+      <div class="grid" id="grid"></div>
+    </div>
+    <div class="block">
+      <p class="label">各部位练了几次</p>
+      <div class="bars" id="bars"></div>
+    </div>
+    <div class="block">
+      <p class="label">里程碑 · 最高重量</p>
+      <div class="summary" id="milestones"></div>
+    </div>
+    <div class="block">
+      <p class="label">最近的记录</p>
+      <div class="log-list" id="logs"></div>
+    </div>
+
+    <div class="block">
+      <p class="label">数据</p>
+      <div class="data-actions">
+        <button class="ghost" type="button" id="exportBtn">导出备份</button>
+        <button class="ghost" type="button" id="importBtn">导入备份</button>
+      </div>
+      <p class="hint" id="dataMsg">记录存在这台设备的浏览器里。换了手机或清了缓存，用导出的文件导回来就行。</p>
+    </div>
+  </section>
+
+</main>
+
+<div class="sheet" id="sheet" hidden>
+  <div class="sheet-in">
+    <div class="sheet-top">
+      <b>导入今天的计划</b>
+      <button type="button" id="closeImport" title="关闭">✕</button>
+    </div>
+    <label class="label" for="importDate">记到哪一天</label>
+    <input type="date" id="importDate" class="datein" style="margin-bottom:14px">
+    <textarea id="importText" placeholder="把计划整段粘进来，比如：&#10;&#10;1. 器械腿举: 3组×12次 (45kg，离心慢放)&#10;2. 坐姿腿弯举: 3组×12次 (40kg)&#10;有氧: 椭圆机10分钟 (阻力8档)"></textarea>
+    <div id="preview"></div>
+    <div class="sheet-actions">
+      <button class="ghost" type="button" id="parseBtn">解析</button>
+      <button class="primary" type="button" id="applyBtn" disabled>填入今天的记录</button>
+    </div>
+    <p class="parse-note" id="parseNote">括号里的动作指导会被忽略，只取器械名、重量、组数、次数。</p>
+  </div>
+</div>
+
+<div class="sheet" id="backSheet" hidden>
+  <div class="sheet-in">
+    <div class="sheet-top">
+      <b>补录以前的记录</b>
+      <button type="button" id="closeBack" title="关闭">✕</button>
+    </div>
+    <label class="label" for="backDate">记到哪一天</label>
+    <input type="date" id="backDate" class="datein">
+    <div class="sheet-actions">
+      <button class="primary" type="button" id="backGo">开始补录</button>
+    </div>
+    <p class="parse-note">选好日期，然后像平时一样点器械、填重量，保存到那一天。这天已有的记录会先读出来。</p>
+  </div>
+</div>
+
+<div class="sheet" id="drawer">
+  <div class="drawer-in">
+    <div class="drawer-top">
+      <i></i>
+      <b id="drawerTitle">今天的训练</b>
+      <button type="button" id="closeDrawer" title="收起">✕</button>
+    </div>
+    <div class="drawer-body">
+      <div id="items"></div>
+      <button class="ghost" type="button" id="moreMachine" style="width:100%;margin-top:6px">＋ 再加一台器械</button>
+      <p class="label" style="margin:24px 0 10px">感受</p>
+      <textarea id="note" placeholder="状态怎么样，有没有哪里不舒服…"></textarea>
+    </div>
+    <div class="drawer-foot">
+      <button class="primary" id="save">保存今天的训练</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* 杠铃片标准配色：红25 / 蓝20 / 黄15 / 绿10 / 银5 / 黑2.5，其余部位用补充色 */
+  var PLACE_COLOR = {
+    "胸":"#C1352B", "背":"#20509E", "腿":"#A97A0B", "肩":"#2E7D4F",
+    "手臂":"#6B7280", "核心":"#3A3F45", "有氧":"#0E7C86", "其他":"#7A4E9B"
+  };
+
+  /* 健身房常见器械：固定器械 + 自由重量 */
+  var LIBRARY = {
+    "胸": ["坐姿推胸机","上斜推胸机","蝴蝶机","龙门架夹胸","史密斯机","双杠臂屈伸","杠铃卧推","哑铃卧推","哑铃飞鸟"],
+    "背": ["高位下拉","坐姿划船机","器械划船","反向飞鸟机","引体向上","杠铃划船","哑铃单臂划船","坐姿直臂下压","T杠划船"],
+    "腿": ["腿举机","腿屈伸机","腿弯举机","哈克深蹲","史密斯深蹲","杠铃深蹲","箭步蹲","臀推机","髋内收机","髋外展机","坐姿提踵机"],
+    "肩": ["肩推机","侧平举机","反向蝴蝶机","杠铃推举","哑铃推举","哑铃侧平举","面拉"],
+    "手臂": ["二头弯举机","牧师凳弯举","三头臂屈伸机","绳索下压","哑铃弯举","锤式弯举","窄距卧推"],
+    "核心": ["卷腹机","罗马椅","悬垂举腿","绳索卷腹","平板支撑"],
+    "有氧": ["跑步机","椭圆机","动感单车","划船机","登山机","踏步机","跳绳"],
+    "其他": ["壶铃","弹力带","TRX","药球","战绳"]
+  };
+
+  var FALLBACK = ["#C1352B","#20509E","#A97A0B","#2E7D4F","#6B7280","#3A3F45","#0E7C86","#7A4E9B"];
+
+  /* 有氧参数的名称与单位 */
+  var CARDIO_LABEL = {
+    min:["时间","分钟"], resist:["阻力","档"], incline:["坡度","%"],
+    speed:["速度","km/h"], rpm:["踏频",""], spm:["桨频","次/分"],
+    level:["档位","档"], dist:["距离","米"], count:["个数","个"]
+  };
+  /* 每种有氧器械记哪几项 */
+  var CARDIO_FIELDS = {
+    "跑步机":   ["min","speed","incline"],
+    "椭圆机":   ["min","resist","rpm"],
+    "动感单车": ["min","resist","rpm"],
+    "划船机":   ["min","spm","dist"],
+    "登山机":   ["min","level","speed"],
+    "踏步机":   ["min","resist"],
+    "跳绳":     ["min","count"]
+  };
+  var CARDIO_DEFAULT = ["min","resist"];
+
+  var store = {
+    get: function(k,d){ try{ var v=JSON.parse(localStorage.getItem(k)); return v===null?d:v; }catch(e){ return d; } },
+    set: function(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
+  };
+
+  var custom  = store.get("custom", []);      // 用户自己加的器械
+  var workouts= store.get("workouts", []);
+  var picked  = [];                            // 今天选中的器械（有序）
+  var draft   = {};                            // 器械名 -> [{w,s,r}]
+  var draftCardio = {};                        // 有氧器械名 -> {min, resist, speed, ...}
+  var editing = false;                         // 是否处于编辑态；否则显示今日摘要
+
+  var $ = function(s){ return document.querySelector(s); };
+
+  /* 器械 -> 部位 */
+  var PLACE_OF = {};
+  Object.keys(LIBRARY).forEach(function(g){
+    LIBRARY[g].forEach(function(m){ PLACE_OF[m] = g; });
+  });
+  custom.forEach(function(m){ if(!PLACE_OF[m]) PLACE_OF[m] = "其他"; });
+
+  function isCardio(name){ return PLACE_OF[name] === "有氧"; }
+  function cardioFields(name){ return isCardio(name) ? (CARDIO_FIELDS[name] || CARDIO_DEFAULT) : null; }
+
+  function colorOf(name){
+    var g = PLACE_OF[name];
+    if (g && PLACE_COLOR[g]) return PLACE_COLOR[g];
+    var i = Object.keys(PLACE_OF).indexOf(name);
+    return FALLBACK[(i<0?0:i) % FALLBACK.length];
+  }
+  function keyOf(d){
+    return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+  }
+  var TODAY = keyOf(new Date());
+  var editingDate = TODAY;              // 正在记哪一天；补录时会变
+
+  (function(){
+    var d=new Date(), w="日一二三四五六"[d.getDay()];
+    $("#today").textContent = (d.getMonth()+1)+"月"+d.getDate()+"日 星期"+w;
+  })();
+
+  function saveAll(){ store.set("workouts",workouts); store.set("custom",custom); }
+  function findDate(k){ for(var i=0;i<workouts.length;i++) if(workouts[i].date===k) return workouts[i]; return null; }
+  function findToday(){ return findDate(TODAY); }
+  function mdOf(k){ return Number(k.slice(5,7)) + "月" + Number(k.slice(8,10)) + "日"; }
+
+  /* ================= 器械库 ================= */
+  function groupsToShow(){
+    var list = Object.keys(LIBRARY).map(function(g){ return [g, LIBRARY[g].slice()]; });
+    if (custom.length) list.push(["其他", list[list.length-1][0]==="其他" ? list[list.length-1][1].concat(custom) : custom.slice()]);
+    // 自定义器械去重后并入「其他」
+    var seen = {};
+    list.forEach(function(pair){ pair[1] = pair[1].filter(function(m){ if(seen[m]) return false; seen[m]=1; return true; }); });
+    return list.filter(function(pair){ return pair[1].length; });
+  }
+
+  function renderLibrary(){
+    var q = $("#search").value.trim().toLowerCase();
+    var box = $("#library"); box.innerHTML = "";
+    var any = false;
+
+    groupsToShow().forEach(function(pair){
+      var g = pair[0], names = pair[1];
+      var grpHit = (g.toLowerCase().indexOf(q) >= 0);
+      var hits = q ? names.filter(function(m){ return grpHit || m.toLowerCase().indexOf(q) >= 0; }) : names;
+      if (!hits.length) return;
+      any = true;
+
+      var wrap = document.createElement("div");
+      wrap.className = "grp";
+      wrap.style.setProperty("--gc", PLACE_COLOR[g] || "#6B7280");
+
+      var h = document.createElement("button");
+      h.type = "button"; h.className = "gname";
+      h.setAttribute("aria-pressed", picked.indexOf(g) >= 0 ? "true" : "false");
+      h.innerHTML = '<span class="gdot"></span>' + g;
+      h.title = "只记「" + g + "」，不细分器械";
+      h.addEventListener("click", function(){ toggle(g, true); });
+      wrap.appendChild(h);
+
+      var chips = document.createElement("div");
+      chips.className = "chips";
+      hits.forEach(function(m){
+        var c = document.createElement("button");
+        c.type = "button"; c.className = "chip";
+        c.style.setProperty("--cc", colorOf(m));
+        c.setAttribute("aria-pressed", picked.indexOf(m) >= 0 ? "true" : "false");
+        c.innerHTML = '<span class="dot"></span>' + m;
+        c.addEventListener("click", function(){ toggle(m, true); });
+        chips.appendChild(c);
+      });
+      wrap.appendChild(chips);
+      box.appendChild(wrap);
+    });
+
+    if (!any){
+      var p = document.createElement("p");
+      p.className = "noresult";
+      p.textContent = "清单里没有「" + $("#search").value.trim() + "」，可以用下面的按钮加上。";
+      box.appendChild(p);
+    }
+  }
+
+  /* 上次做这台器械时填的数据（按日期从近到远找），用来预填 */
+  function lastSetsOf(name, before){
+    var list = workouts.slice().sort(function(a,b){ return a.date < b.date ? 1 : -1; });
+    for (var i=0;i<list.length;i++){
+      if (before && list[i].date >= before) continue;   // 只取这天之前的，补录时不会带出更晚的数据
+      var its = list[i].items || [];
+      for (var j=0;j<its.length;j++){
+        if (its[j].name === name && its[j].sets && its[j].sets.length) return its[j].sets;
+      }
+    }
+    return null;
+  }
+
+  /* 上次填了几行就生成几行；重量、组数、次数都带过来，直接改就行 */
+  function draftFromLast(name){
+    var last = lastSetsOf(name, editingDate);
+    if (!last || !last.length) return [{w:"", s:"", r:""}];
+    return last.map(function(x){
+      return { w:(x.w==null?"":x.w), s:(x.s==null?"":x.s), r:(x.r==null?"":x.r) };
+    });
+  }
+
+  function toggle(name, focus){
+    capture();
+    var i = picked.indexOf(name);
+    if (i >= 0){ picked.splice(i,1); }
+    else {
+      picked.push(name);
+      if (!draft[name]) draft[name] = draftFromLast(name);
+    }
+    renderLibrary();
+    if (picked.length){
+      openDrawer(focus);
+    } else {
+      editing = false;
+      closeDrawer();
+    }
+  }
+
+  function openDrawer(focusLast){
+    editing = true;
+    renderItems();
+    $("#drawer").classList.add("open");
+    document.body.style.overflow = "hidden";
+    syncEntry();
+    if (focusLast){
+      setTimeout(function(){
+        var els = $("#items").querySelectorAll(".item .w");
+        var last = els[els.length - 1];
+        if (last){ last.focus(); if (last.select) last.select(); }
+      }, 90);
+    }
+  }
+
+  function closeDrawer(){
+    capture();
+    $("#drawer").classList.remove("open");
+    document.body.style.overflow = "";
+    syncEntry();
+  }
+
+  /* ================= 记录区 ================= */
+  function makeSet(name, w, s, r){
+    var row = document.createElement("div");
+    row.className = "set";
+    row.innerHTML =
+      '<label class="cf"><input class="w" type="number" inputmode="decimal" min="0" step="2.5" placeholder="0" value="'+(w||"")+'"><span class="cl"><b>重量</b><i>kg</i></span></label>'+
+      '<label class="cf"><input class="s" type="number" inputmode="numeric" min="0" placeholder="0" value="'+(s||"")+'"><span class="cl"><b>组数</b></span></label>'+
+      '<label class="cf"><input class="r" type="number" inputmode="numeric" min="0" placeholder="0" value="'+(r||"")+'"><span class="cl"><b>次数</b></span></label>';
+    ["input","change"].forEach(function(ev){ row.addEventListener(ev, capture); });
+    return row;
+  }
+
+  function makeCardio(name, vals){
+    var fields = cardioFields(name), box = document.createElement("div");
+    box.className = "cfields";
+    fields.forEach(function(k){
+      var lab = CARDIO_LABEL[k] || [k, ""];
+      var v = (vals && vals[k] != null) ? vals[k] : "";
+      var lb = document.createElement("label");
+      lb.className = "cf";
+      lb.innerHTML = '<input type="number" inputmode="decimal" min="0" placeholder="–" value="' + v + '">' +
+                     '<span class="cl"><b>' + lab[0] + '</b>' + (lab[1] ? '<i>' + lab[1] + '</i>' : '') + '</span>';
+      lb.querySelector("input").setAttribute("data-k", k);
+      lb.addEventListener("input", capture);
+      lb.addEventListener("change", capture);
+      box.appendChild(lb);
+    });
+    return box;
+  }
+
+  function itemSummary(it){
+    if (it.cardio){
+      var ks = cardioFields(it.name) || CARDIO_DEFAULT;
+      return ks.map(function(k){
+        var v = it.cardio[k];
+        if (v == null || v === "") return "";
+        var lab = CARDIO_LABEL[k] || [k, ""];
+        return lab[0] + " " + v + (lab[1] ? " " + lab[1] : "");
+      }).filter(Boolean).join(" · ");
+    }
+    return (it.sets || []).map(function(x){
+      var t = (x.w || "–") + " kg × " + (x.s || "–") + " 组";
+      if (x.r) t += " × " + x.r + " 次";
+      return t;
+    }).join(" · ");
+  }
+
+  function renderItems(){
+    var box = $("#items"); box.innerHTML = "";
+    if (!picked.length){
+      box.innerHTML = '<p class="noresult">从上面点器械，记下今天练的。</p>';
+      return;
+    }
+    picked.forEach(function(name){
+      var card = document.createElement("div");
+      card.className = "item";
+      card.style.setProperty("--cc", colorOf(name));
+
+      var head = document.createElement("div");
+      head.className = "item-head";
+      head.innerHTML = '<span class="dot"></span><b></b><button type="button" title="今天不练这个">✕</button>';
+      head.querySelector("b").textContent = name;
+      head.querySelector("button").addEventListener("click", function(){ toggle(name, false); });
+      card.appendChild(head);
+
+      if (cardioFields(name)){
+        card.appendChild(makeCardio(name, draftCardio[name]));
+      } else {
+        (draft[name] || [{w:"",s:"",r:""}]).forEach(function(x){
+          card.appendChild(makeSet(name, x.w, x.s, x.r));
+        });
+
+        var add = document.createElement("button");
+        add.type = "button"; add.className = "mini";
+        add.textContent = "＋ 加一组";
+        add.style.marginTop = "2px";
+        add.addEventListener("click", function(){
+          capture();
+          draft[name] = draft[name] || [{w:"",s:"",r:""}];
+          draft[name].push({w:"",s:"",r:""});
+          renderItems();
+        });
+        card.appendChild(add);
+      }
+
+      box.appendChild(card);
+    });
+  }
+
+  /* 把输入框里的值读回 draft */
+  function capture(){
+    picked.forEach(function(name){
+      var card = null;
+      Array.prototype.forEach.call($("#items").children, function(c){
+        if (c.querySelector("b") && c.querySelector("b").textContent === name) card = c;
+      });
+      if (!card) return;
+      var cf = card.querySelector(".cfields");
+      if (cf){
+        var o = {};
+        Array.prototype.forEach.call(cf.querySelectorAll("input"), function(inp){
+          o[inp.getAttribute("data-k")] = inp.value;
+        });
+        draftCardio[name] = o;
+        return;
+      }
+      var rows = [], els = card.querySelectorAll(".set");
+      Array.prototype.forEach.call(els, function(row){
+        rows.push({
+          w: row.querySelector(".w").value,
+          s: row.querySelector(".s").value,
+          r: row.querySelector(".r").value
+        });
+      });
+      draft[name] = rows;
+    });
+  }
+
+  function syncEntry(){
+    var doc = findDate(editingDate);
+    updateDateUI();
+    $("#savedBlock").hidden = editing || !doc;
+    if (editing){
+      renderItems();
+      var btn = $("#save"), none = picked.length === 0;
+      btn.textContent = editingDate === TODAY ? "保存今天的训练" : "保存 " + mdOf(editingDate) + " 的记录";
+      btn.classList.remove("saved");
+      btn.disabled = none;
+      btn.style.opacity = none ? ".38" : "";
+      btn.style.cursor  = none ? "default" : "";
+      $("#pendText").textContent = "已选 " + picked.length + " 台 · 继续填写";
+      $("#reopenDrawer").hidden = $("#drawer").classList.contains("open");
+    } else {
+      renderSaved();
+      $("#reopenDrawer").hidden = true;
+    }
+  }
+
+  function renderSaved(){
+    var d = findDate(editingDate), box = $("#savedBox");
+    if (!d){ $("#savedBlock").hidden = true; box.innerHTML=""; return; }
+    $("#savedBlock").hidden = false;
+    var isToday = editingDate === TODAY;
+    var rows = (d.items||[]).map(function(it){
+      return '<div class="srow"><span class="dot" style="background:'+colorOf(it.name)+'"></span>'+
+             '<b>'+esc(it.name)+'</b><span class="sv">'+esc(itemSummary(it))+'</span></div>';
+    }).join("");
+    box.innerHTML =
+      '<div class="summary">'+
+        '<div class="summary-head"><time>'+esc(d.savedAt||"")+'</time></div>'+
+        rows+
+        (d.note ? '<div class="note">'+esc(d.note)+'</div>' : "")+
+        '<button class="ghost" id="editToday" style="margin-top:14px">'+(isToday ? "修改今天的记录" : "修改这天的记录")+'</button>'+
+        (isToday ? "" : '<button class="ghost" id="backTodayBtn" style="margin-top:8px;width:100%">回到今天</button>')+
+      '</div>';
+    var eb = $("#editToday");
+    if (eb) eb.addEventListener("click", function(){ loadFrom(findDate(editingDate)); openDrawer(false); });
+    var bb = $("#backTodayBtn");
+    if (bb) bb.addEventListener("click", goToday);
+  }
+
+  /* 补录时把「现在在记哪天」标清楚，并给一条回到今天的路 */
+  function updateDateUI(){
+    var isToday = editingDate === TODAY;
+    var b = $("#entryBanner");
+    if (b){
+      b.hidden = isToday;
+      if (isToday){ b.innerHTML = ""; }
+      else {
+        b.innerHTML = '正在补录 <b>'+esc(mdOf(editingDate))+'</b> 的记录'+
+                      '<button class="mini" id="backToday3" type="button">回到今天</button>';
+        var t = $("#backToday3");
+        if (t) t.addEventListener("click", goToday);
+      }
+    }
+    var dt = $("#drawerTitle");
+    if (dt) dt.textContent = isToday ? "今天的训练" : mdOf(editingDate) + " 的训练";
+    var sl = $("#savedLabel");
+    if (sl) sl.textContent = isToday ? "今天" : mdOf(editingDate);
+  }
+
+  function goToday(){
+    editingDate = TODAY;
+    loadFrom(findToday());
+    editing = false;
+    renderLibrary();
+    syncEntry();
+  }
+
+  function esc(s){ return String(s).replace(/[&<>"]/g, function(c){
+    return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
+
+  /* ================= 统计 ================= */
+  function placesOf(w){
+    var set = {};
+    (w.items||[]).forEach(function(it){
+      var g = it.name;
+      if (PLACE_OF[g]) g = PLACE_OF[g];
+      set[g] = 1;
+    });
+    return Object.keys(set);
+  }
+
+  function renderStats(){
+    var now = new Date();
+    var ym = now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0");
+    $("#mCount").innerHTML = workouts.filter(function(w){ return w.date.indexOf(ym)===0; }).length + '<small>天</small>';
+
+    var byDate = {};
+    workouts.forEach(function(w){ byDate[w.date] = w; });
+
+    var g = $("#grid"); g.innerHTML = "";
+    for (var i=55;i>=0;i--){
+      var d = new Date(); d.setDate(d.getDate()-i);
+      var k = keyOf(d), cell = document.createElement("i");
+      if (byDate[k]){
+        cell.setAttribute("data-on","1");
+        var ps = placesOf(byDate[k]);
+        cell.style.setProperty("--gc", ps.length ? (PLACE_COLOR[ps[0]]||"#6B7280") : "#C1352B");
+      }
+      cell.title = (d.getMonth()+1)+"月"+d.getDate()+"日" + (byDate[k] ? " · "+placesOf(byDate[k]).join("/") : "");
+      g.appendChild(cell);
+    }
+
+    var counts = {};
+    workouts.forEach(function(w){
+      placesOf(w).forEach(function(p){ counts[p] = (counts[p]||0)+1; });
+    });
+    var list = Object.keys(counts).map(function(k){ return [k,counts[k]]; })
+                     .sort(function(a,b){ return b[1]-a[1]; });
+    var box = $("#bars");
+    if (!list.length){
+      box.innerHTML = '<p class="empty">还没有记录。<br>去「记录」页记下第一次训练。</p>';
+    } else {
+      var max = list[0][1];
+      box.innerHTML = list.map(function(x){
+        var pct = Math.max(6, Math.round(x[1]/max*100));
+        return '<div class="bar" style="--gc:'+(PLACE_COLOR[x[0]]||"#6B7280")+'">'+
+                 '<span class="name">'+x[0]+'</span>'+
+                 '<span class="track"><i style="width:'+pct+'%"></i></span>'+
+                 '<span class="n">'+x[1]+'</span>'+
+               '</div>';
+      }).join("");
+    }
+
+    var recent = workouts.slice().sort(function(a,b){ return a.date<b.date?1:-1; }).slice(0,8);
+    var lg = $("#logs");
+    if (!recent.length){
+      lg.innerHTML = '<p class="empty">暂时空着。</p>';
+    } else {
+      lg.innerHTML = recent.map(function(w){
+        var total = 0, cmin = 0;
+        (w.items||[]).forEach(function(it){
+          if (it.cardio){ cmin += Number(it.cardio.min) || 0; return; }
+          (it.sets||[]).forEach(function(s){
+            total += (Number(s.w)||0) * (Number(s.s)||0) * (Number(s.r)||1);
+          });
+        });
+        var ps = placesOf(w);
+        var mm = Number(w.date.slice(5,7)), dd = Number(w.date.slice(8,10));
+        var names = (w.items||[]).map(function(it){ return it.name; }).join(" · ");
+        var bits = [];
+        if (total) bits.push(total.toLocaleString()+" kg");
+        if (cmin) bits.push(cmin+" 分钟");
+
+        var detail = (w.items||[]).map(function(it, idx){
+          return '<div class="li">'+
+                   '<span class="dot" style="background:'+colorOf(it.name)+'"></span>'+
+                   '<b>'+esc(it.name)+'</b>'+
+                   '<span class="sv">'+esc(itemSummary(it))+'</span>'+
+                   '<button class="del-x" type="button" data-day="'+w.date+'" data-idx="'+idx+'" title="删掉这个动作">✕</button>'+
+                 '</div>';
+        }).join("");
+        if (w.note) detail += '<p class="li-note">'+esc(w.note)+'</p>';
+        detail += '<button class="del-day" type="button" data-day="'+w.date+'">删除这一天的记录</button>';
+
+        return '<details>'+
+                 '<summary class="row">'+
+                   '<span class="dot" style="background:'+(PLACE_COLOR[ps[0]]||"#6B7280")+'"></span>'+
+                   '<span class="d">'+mm+"/"+dd+'</span>'+
+                   '<span class="p">'+esc(names)+'</span>'+
+                   '<span class="v">'+bits.join(" · ")+'</span>'+
+                 '</summary>'+
+                 '<div class="log-detail">'+detail+'</div>'+
+               '</details>';
+      }).join("");
+    }
+
+    renderMilestones();
+  }
+
+  /* ================= 里程碑（各器械历史最高重量） ================= */
+  var GROUP_ORDER = Object.keys(LIBRARY);
+
+  function renderMilestones(){
+    var box = $("#milestones");
+    var best = {};
+    workouts.forEach(function(wk){
+      (wk.items||[]).forEach(function(it){
+        if (it.cardio) return;
+        (it.sets||[]).forEach(function(s){
+          var v = Number(s.w) || 0;
+          if (v <= 0) return;
+          if (!best[it.name] || v > best[it.name]) best[it.name] = v;
+        });
+      });
+    });
+    var list = Object.keys(best).map(function(n){ return { name:n, w:best[n] }; });
+    if (!list.length){
+      box.innerHTML = '<p class="empty" style="padding:26px 10px">还没有记录。<br>练几次之后，这里会列出每台器械的最高重量。</p>';
+      return;
+    }
+    list.sort(function(a,b){
+      var pa = GROUP_ORDER.indexOf(PLACE_OF[a.name]); if (pa < 0) pa = GROUP_ORDER.length;
+      var pb = GROUP_ORDER.indexOf(PLACE_OF[b.name]); if (pb < 0) pb = GROUP_ORDER.length;
+      if (pa !== pb) return pa - pb;
+      return b.w - a.w;
+    });
+    box.innerHTML = list.map(function(x){
+      return '<div class="srow">'+
+               '<span class="dot" style="background:'+colorOf(x.name)+'"></span>'+
+               '<b>'+esc(x.name)+'</b>'+
+               '<span class="sv">'+x.w+' kg</span>'+
+             '</div>';
+    }).join("");
+  }
+
+  /* ================= 删除记录 ================= */
+  function closestByClass(el, cls){
+    while (el && el.nodeType === 1){
+      if (el.classList.contains(cls)) return el;
+      el = el.parentNode;
+    }
+    return null;
+  }
+
+  /* 不弹窗：第一次点把按钮变成确认态，再点一次才真删，3 秒不动就复原 */
+  function armConfirm(btn, armedText, fn){
+    if (btn.getAttribute("data-armed") === "1"){ fn(); return; }
+    btn.setAttribute("data-armed", "1");
+    btn.setAttribute("data-old", btn.textContent);
+    btn.textContent = armedText;
+    btn.classList.add("armed");
+    setTimeout(function(){
+      if (btn.getAttribute("data-armed") === "1"){
+        btn.setAttribute("data-armed", "0");
+        btn.textContent = btn.getAttribute("data-old");
+        btn.classList.remove("armed");
+      }
+    }, 3200);
+  }
+
+  function afterDataChange(date){
+    if (date === TODAY || date === editingDate){
+      loadFrom(findDate(editingDate));
+      editing = false;
+      renderLibrary();
+      syncEntry();
+    }
+    renderStats();
+  }
+
+  function removeDay(date){
+    workouts = workouts.filter(function(w){ return w.date !== date; });
+    saveAll();
+    afterDataChange(date);
+  }
+
+  function removeItem(date, idx){
+    var w = null;
+    workouts.forEach(function(x){ if (x.date === date) w = x; });
+    if (!w || !w.items) return;
+    w.items.splice(idx, 1);
+    if (!w.items.length){ removeDay(date); return; }   // 删空了就整天删掉
+    saveAll();
+    afterDataChange(date);
+  }
+
+  $("#logs").addEventListener("click", function(e){
+    var x = closestByClass(e.target, "del-x");
+    if (x){
+      armConfirm(x, "确定？", function(){
+        removeItem(x.getAttribute("data-day"), Number(x.getAttribute("data-idx")));
+      });
+      return;
+    }
+    var db = closestByClass(e.target, "del-day");
+    if (db){
+      armConfirm(db, "再点一次，删掉这一天", function(){
+        removeDay(db.getAttribute("data-day"));
+      });
+    }
+  });
+
+  /* ================= 破纪录检测 ================= */
+  /* 和「今天之前的最高重量 + 今天保存前的旧值」比，超了才算破纪录；
+     同一天反复编辑不会重复报，第一次做某台器械也不算破纪录 */
+  function newRecords(items){
+    var base = {};
+    function bump(n, v){ if (v > 0 && (!base[n] || v > base[n])) base[n] = v; }
+    workouts.forEach(function(w){
+      if (w.date === TODAY) return;
+      (w.items||[]).forEach(function(it){
+        if (it.cardio) return;
+        (it.sets||[]).forEach(function(s){ bump(it.name, Number(s.w)||0); });
+      });
+    });
+    var old = findToday();
+    if (old){
+      (old.items||[]).forEach(function(it){
+        if (it.cardio) return;
+        (it.sets||[]).forEach(function(s){ bump(it.name, Number(s.w)||0); });
+      });
+    }
+    var hits = [];
+    items.forEach(function(it){
+      if (it.cardio) return;
+      var top = 0;
+      (it.sets||[]).forEach(function(s){ var v = Number(s.w)||0; if (v > top) top = v; });
+      if (top > 0 && base[it.name] && top > base[it.name]) hits.push({ name:it.name, w:top, old:base[it.name] });
+    });
+    return hits;
+  }
+
+  var toastTimer = null;
+  function showToast(hits){
+    var t = $("#toast");
+    if (!t || !hits.length) return;
+    var rows = hits.slice(0,3).map(function(h){
+      return '<div class="pr"><span class="n">'+esc(h.name)+'</span>'+
+               '<span class="v">'+h.w+' kg</span>'+
+               '<span class="o">上次 '+h.old+' kg</span></div>';
+    }).join("");
+    if (hits.length > 3) rows += '<div class="pr"><span class="o" style="margin-left:0">…还有 '+(hits.length-3)+' 项</span></div>';
+    t.innerHTML = '<p class="th">新纪录</p>' + rows;
+    t.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ t.classList.remove("show"); }, 4600);
+  }
+
+  /* ================= 保存 ================= */
+  $("#save").addEventListener("click", function(){
+    capture();
+    var items = picked.map(function(name){
+      if (cardioFields(name)){
+        var c = {}, src = draftCardio[name] || {};
+        cardioFields(name).forEach(function(k){
+          var v = src[k];
+          if (v !== "" && v != null) c[k] = Number(v) || v;
+        });
+        return { name: name, sets: [], cardio: c };
+      }
+      var rows = (draft[name]||[]).map(function(x){
+        return { w: Number(x.w)||0, s: Number(x.s)||0, r: Number(x.r)||0 };
+      }).filter(function(x){ return x.w || x.s || x.r; });
+      return { name: name, sets: rows };
+    });
+    var hits = (editingDate === TODAY) ? newRecords(items) : [];   // 补录历史时不做破纪录
+    var t = new Date();
+    var stamp = String(t.getHours()).padStart(2,"0")+":"+String(t.getMinutes()).padStart(2,"0")+" 保存";
+    var d = findDate(editingDate);
+    if (d){ d.items = items; d.note = $("#note").value.trim(); d.savedAt = stamp; }
+    else workouts.push({ date:editingDate, items:items, note:$("#note").value.trim(), savedAt:stamp });
+
+    saveAll();
+    renderStats();
+
+    var btn = $("#save");
+    btn.textContent = "已保存 ✓";
+    btn.classList.add("saved");
+    setTimeout(function(){
+      editing = false;
+      loadFrom(findDate(editingDate));   // 补录时停在那天的摘要上，不跳回今天
+      $("#drawer").classList.remove("open");
+      document.body.style.overflow = "";
+      renderLibrary();
+      syncEntry();
+      if (hits.length) showToast(hits);
+    }, 620);
+  });
+
+  $("#addMachine").addEventListener("click", function(){
+    var name = prompt("器械叫什么？（例如：坐姿腹肌训练机）");
+    if (!name) return;
+    name = name.trim();
+    if (!name || PLACE_OF[name]) return;
+    custom.push(name); PLACE_OF[name] = "其他";
+    saveAll();
+    toggle(name);
+    $("#search").value = "";
+  });
+
+  $("#search").addEventListener("input", renderLibrary);
+
+  /* ================= 切换 ================= */
+  Array.prototype.forEach.call(document.querySelectorAll(".tabs button"), function(b){
+    b.addEventListener("click", function(){
+      Array.prototype.forEach.call(document.querySelectorAll(".tabs button"), function(x){
+        x.setAttribute("aria-selected", String(x===b));
+      });
+      var v = b.getAttribute("data-view");
+      $("#view-log").hidden   = v!=="log";
+      $("#view-stats").hidden = v!=="stats";
+      if (v==="stats") renderStats();
+    });
+  });
+
+  /* ================= 启动 ================= */
+  function loadFrom(doc){
+    if (!doc){ picked = []; draft = {}; draftCardio = {}; $("#note").value = ""; return; }
+    picked = (doc.items||[]).map(function(it){ return it.name; });
+    picked.forEach(function(n){ PLACE_OF[n] = PLACE_OF[n] || "其他"; });
+    draft = {}; draftCardio = {};
+    (doc.items||[]).forEach(function(it){
+      if (it.cardio) draftCardio[it.name] = it.cardio;
+      else draft[it.name] = (it.sets||[]).map(function(s){ return {w:s.w, s:s.s, r:s.r}; });
+    });
+    $("#note").value = doc.note || "";
+  }
+
+  /* ================= 文本导入 ================= */
+  var ALL_NAMES = [];
+  Object.keys(LIBRARY).forEach(function(g){
+    LIBRARY[g].forEach(function(m){ ALL_NAMES.push(m); });
+  });
+
+  /* 只放高把握的对照：你说「器械腿举」，它认得出是「腿举机」 */
+  var ALIAS = {
+    "器械腿举":"腿举机", "腿举":"腿举机", "倒蹬":"腿举机",
+    "器械腿弯举":"腿弯举机", "腿弯举":"腿弯举机", "俯卧腿弯举":"腿弯举机",
+    "腿屈伸":"腿屈伸机",
+    "器械夹腿":"髋内收机", "夹腿":"髋内收机", "大腿内收":"髋内收机",
+    "器械外展":"髋外展机", "大腿外展":"髋外展机", "臀中肌":"髋外展机",
+    "器械推胸":"坐姿推胸机", "推胸":"坐姿推胸机",
+    "器械夹胸":"蝴蝶机", "蝴蝶机夹胸":"蝴蝶机",
+    "高位下拉机":"高位下拉",
+    "坐姿划船":"坐姿划船机",
+    "器械提踵":"坐姿提踵机",
+    "器械臀推":"臀推机"
+  };
+
+  function normName(s){
+    return String(s)
+      .replace(/[（(][^)）]*[)）]/g, "")
+      .replace(/器械|训练机|器材|坐姿|站姿|俯身|俯卧|平躺|仰卧|辅助|固定/g, "")
+      .replace(/[机台器]$/g, "")
+      .replace(/[\s·・\-—_/]/g, "")
+      .toLowerCase();
+  }
+
+  function matchMachine(raw){
+    var name = String(raw).trim();
+    if (ALL_NAMES.indexOf(name) >= 0) return name;
+    if (ALIAS[name] && ALL_NAMES.indexOf(ALIAS[name]) >= 0) return ALIAS[name];
+
+    var n = normName(name), i, ln;
+    if (n){
+      for (i=0;i<ALL_NAMES.length;i++) if (normName(ALL_NAMES[i]) === n) return ALL_NAMES[i];
+      for (i=0;i<ALL_NAMES.length;i++){
+        ln = normName(ALL_NAMES[i]);
+        if (ln && (ln.indexOf(n) >= 0 || n.indexOf(ln) >= 0)) return ALL_NAMES[i];
+      }
+    }
+    // 还有括号里的词可以试：器械夹腿(内收) -> 内收 -> 髋内收机
+    var pm = name.match(/[（(]([^)）]*)[)）]/);
+    if (pm){
+      var parts = pm[1].split(/[\/、，,]/);
+      for (var k=0;k<parts.length;k++){
+        var inner = parts[k].trim();
+        if (!inner) continue;
+        if (ALIAS[inner] && ALL_NAMES.indexOf(ALIAS[inner]) >= 0) return ALIAS[inner];
+        var inn = normName(inner);
+        if (!inn) continue;
+        for (i=0;i<ALL_NAMES.length;i++){
+          ln = normName(ALL_NAMES[i]);
+          if (ln && (ln.indexOf(inn) >= 0 || inn.indexOf(ln) >= 0)) return ALL_NAMES[i];
+        }
+      }
+    }
+    return null;
+  }
+
+  /* 宽进严出：容得下各种写法，但只取该取的字段 */
+  function parsePlan(text){
+    var out = [];
+    text.split(/\r?\n/).forEach(function(raw){
+      var line = raw.trim();
+      if (!line) return;
+      line = line.replace(/^\s*(?:\d+\s*[.、)．]\s*|[-•*·]\s*)+/, "");
+      if (!line) return;
+
+      var m = line.match(/\d/);
+      if (!m) return;
+      var head = line.slice(0, m.index);
+      var body = line.slice(m.index);
+
+      var name = head.replace(/[：:=\-—，,、\s]+$/, "").trim();
+      name = name.replace(/^(有氧|力量|无氧|热身|拉伸|核心)\s*[：:=\-—]?\s*/, "").trim();
+      if (!name || name.length > 24) return;
+
+      var weight = null;
+      var wm = body.match(/(\d+(?:\.\d+)?)\s*(?:kg|公斤|千克)/i);
+      if (wm) weight = parseFloat(wm[1]);
+
+      var sets = null, reps = null, sm;
+      sm = body.match(/(\d+)\s*(?:组|sets?)\s*[×xX*✕✖]\s*(\d+)/);
+      if (!sm) sm = body.match(/(\d+)\s*[×xX*✕✖]\s*(\d+)/);
+      if (!sm) sm = body.match(/(\d+)\s*组\s*(\d+)\s*(?:次|reps?)/);
+      if (sm){ sets = parseInt(sm[1],10); reps = parseInt(sm[2],10); }
+
+      var mins = null;
+      var tm = body.match(/(\d+(?:\.\d+)?)\s*(?:分钟|min|mins?|分)/i);
+      if (tm) mins = parseFloat(tm[1]);
+
+      var cardio = {};
+      [[/阻力\s*[:：]?\s*(\d+(?:\.\d+)?)/, "resist"],
+       [/坡度\s*[:：]?\s*(\d+(?:\.\d+)?)/, "incline"],
+       [/速度\s*[:：]?\s*(\d+(?:\.\d+)?)/, "speed"],
+       [/踏频\s*[:：]?\s*(\d+(?:\.\d+)?)/, "rpm"],
+       [/桨频\s*[:：]?\s*(\d+(?:\.\d+)?)/, "spm"],
+       [/档位\s*[:：]?\s*(\d+(?:\.\d+)?)/, "level"],
+       [/距离\s*[:：]?\s*(\d+(?:\.\d+)?)/, "dist"],
+       [/个数\s*[:：]?\s*(\d+(?:\.\d+)?)/, "count"]].forEach(function(p){
+        var mm = body.match(p[0]);
+        if (mm) cardio[p[1]] = parseFloat(mm[1]);
+      });
+
+      out.push({ name:name, weight:weight, sets:sets, reps:reps, mins:mins, cardio:cardio });
+    });
+    return out;
+  }
+
+  var parsed = [];
+
+  function renderPreview(){
+    var box = $("#preview");
+    if (!parsed.length){
+      box.innerHTML = '<p class="parse-note">没认出任何一行。每行写成「器械名 3组×12次 45kg」或「器械名: 3组×12次 (45kg)」都能认。</p>';
+      return;
+    }
+    box.innerHTML = parsed.map(function(p){
+      var lib = matchMachine(p.name);
+      var detail = [];
+      if (p.weight != null) detail.push(p.weight + " kg");
+      if (p.sets != null && p.reps != null) detail.push(p.sets + " 组 × " + p.reps + " 次");
+      else if (p.sets != null) detail.push(p.sets + " 组");
+      if (p.mins != null) detail.push(p.mins + " 分钟");
+      if (p.cardio) Object.keys(p.cardio).forEach(function(k){
+        var lab = CARDIO_LABEL[k] || [k, ""];
+        detail.push(lab[0] + " " + p.cardio[k] + (lab[1] ? " " + lab[1] : ""));
+      });
+      var map = lib ? '<span class="map">→ ' + esc(lib) + '</span>'
+                    : '<span class="map new">清单里没有，按原名记</span>';
+      return '<div class="prow"><span class="pn">' + esc(p.name) + '</span>' + map +
+             '<span class="pv">' + (detail.length ? esc(detail.join(" · ")) : "没读到数值") + '</span></div>';
+    }).join("");
+  }
+
+  function applyParsed(){
+    if (!parsed.length) return;
+    var target = ($("#importDate") && $("#importDate").value) || TODAY;   // 导入面板上选的日期
+    if (target !== editingDate || !editing){ editingDate = target; loadFrom(findDate(target)); }
+    editing = true;
+
+    parsed.forEach(function(p){
+      var lib = matchMachine(p.name) || p.name;
+      if (!PLACE_OF[lib]){
+        PLACE_OF[lib] = "其他";
+        if (custom.indexOf(lib) < 0) custom.push(lib);
+      }
+      if (picked.indexOf(lib) < 0) picked.push(lib);
+
+      if (cardioFields(lib)){
+        var c = {};
+        if (p.mins != null) c.min = p.mins;
+        if (p.cardio) Object.keys(p.cardio).forEach(function(k){ c[k] = p.cardio[k]; });
+        draftCardio[lib] = c;
+      } else {
+        if (!draft[lib]) draft[lib] = [];
+        draft[lib].push({
+          w: p.weight != null ? p.weight : "",
+          s: p.sets   != null ? p.sets   : "",
+          r: p.reps   != null ? p.reps   : ""
+        });
+      }
+    });
+
+    saveAll();
+    $("#sheet").classList.remove("open");
+    $("#importText").value = "";
+    parsed = []; $("#preview").innerHTML = "";
+    $("#applyBtn").disabled = true;
+    $("#parseNote").textContent = "括号里的动作指导会被忽略，只取器械名、重量、组数、次数。";
+    renderLibrary();
+    openDrawer(false);
+  }
+
+  $("#openImport").addEventListener("click", function(){
+    $("#importDate").value = editingDate;      // 默认记到当前这一天
+    $("#sheet").classList.add("open");
+    setTimeout(function(){ $("#importText").focus(); }, 90);
+  });
+  $("#closeImport").addEventListener("click", function(){ $("#sheet").classList.remove("open"); });
+  $("#sheet").addEventListener("click", function(e){ if (e.target === $("#sheet")) $("#sheet").classList.remove("open"); });
+
+  /* 补录以前的记录 */
+  $("#openBackfill").addEventListener("click", function(){
+    var d = new Date(); d.setDate(d.getDate() - 1);
+    $("#backDate").value = keyOf(d);                    // 默认昨天
+    $("#backDate").setAttribute("max", TODAY);          // 以后的日子走「记录」页
+    $("#backSheet").classList.add("open");
+  });
+  $("#closeBack").addEventListener("click", function(){ $("#backSheet").classList.remove("open"); });
+  $("#backSheet").addEventListener("click", function(e){ if (e.target === $("#backSheet")) $("#backSheet").classList.remove("open"); });
+  $("#backGo").addEventListener("click", function(){
+    var v = $("#backDate").value;
+    if (!v) return;
+    $("#backSheet").classList.remove("open");
+    editingDate = v;
+    loadFrom(findDate(v));        // 那天已有记录就先读出来
+    editing = true;
+    openDrawer(false);
+  });
+
+  $("#closeDrawer").addEventListener("click", closeDrawer);
+  $("#moreMachine").addEventListener("click", closeDrawer);
+  $("#drawer").addEventListener("click", function(e){ if (e.target === $("#drawer")) closeDrawer(); });
+  $("#reopenDrawer").addEventListener("click", function(){ openDrawer(false); });
+
+  $("#parseBtn").addEventListener("click", function(){
+    parsed = parsePlan($("#importText").value);
+    renderPreview();
+    $("#applyBtn").disabled = parsed.length === 0;
+    $("#parseNote").textContent = parsed.length
+      ? "认出 " + parsed.length + " 项。核对一下，没问题就填进去。"
+      : "没认出内容。每行写成「器械名: 3组×12次 (45kg)」就行，括号里的说明会被忽略。";
+  });
+
+  $("#applyBtn").addEventListener("click", applyParsed);
+
+  /* ================= 备份 ================= */
+  function setMsg(t){ var e = $("#dataMsg"); if (e) e.textContent = t; }
+
+  $("#exportBtn").addEventListener("click", function(){
+    if (!workouts.length){ setMsg("还没有记录，先记两次再导出。"); return; }
+    var payload = {
+      app: "训练日志", version: 1,
+      exportedAt: new Date().toISOString(),
+      workouts: workouts, custom: custom
+    };
+    var blob = new Blob([JSON.stringify(payload, null, 2)], { type:"application/json" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = "训练日志备份-" + TODAY + ".json";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function(){ try{ URL.revokeObjectURL(url); }catch(e){} }, 1500);
+    setMsg("已导出 " + workouts.length + " 天记录，去「下载」里找那个 .json 文件。");
+  });
+
+  $("#importBtn").addEventListener("click", function(){
+    var input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json,application/json";
+    input.addEventListener("change", function(){
+      var f = input.files && input.files[0];
+      if (!f) return;
+      var r = new FileReader();
+      r.onload = function(){
+        var data;
+        try { data = JSON.parse(r.result); }
+        catch(e){ setMsg("这个文件读不出来，确认选的是导出的 .json 备份。"); return; }
+        var ws = Array.isArray(data) ? data : data.workouts;
+        if (!Array.isArray(ws)){ setMsg("文件里没找到训练记录，确认是导出的备份。"); return; }
+
+        var byDate = {}, added = 0;
+        workouts.forEach(function(w){ if (w && w.date) byDate[w.date] = w; });
+        ws.forEach(function(w){
+          if (!w || !w.date) return;
+          if (!byDate[w.date]) added++;
+          byDate[w.date] = w;
+        });
+        workouts = Object.keys(byDate).map(function(k){ return byDate[k]; });
+
+        if (data && data.custom && data.custom.length){
+          data.custom.forEach(function(m){
+            if (custom.indexOf(m) < 0){ custom.push(m); PLACE_OF[m] = PLACE_OF[m] || "其他"; }
+          });
+        }
+
+        saveAll();
+        editingDate = TODAY;              // 导完备份回到今天
+        loadFrom(findToday());
+        editing = false;
+        renderLibrary(); syncEntry(); renderStats();
+        setMsg("导入完成：新增 " + added + " 天，现在共 " + workouts.length + " 天记录。");
+      };
+      r.readAsText(f);
+    });
+    input.click();
+  });
+
+  loadFrom(findToday());
+  editing = false;
+  renderLibrary();
+  syncEntry();
+  renderStats();
+})();
+</script>
+</body>
+</html>
