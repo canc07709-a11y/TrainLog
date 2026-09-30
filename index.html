@@ -201,6 +201,22 @@ button.primary.saved{background:#2E7D4F}
 .ms-chart{padding:2px 0 14px}
 .ms-note{font-size:12px;color:var(--ink3);margin-top:-6px}
 
+/* ---------- 按名字搜出来删 ---------- */
+.search-mini{width:100%;border:1px solid var(--line);background:var(--field);border-radius:10px;
+  padding:10px 13px;font:inherit;font-size:14.5px;color:var(--ink)}
+.search-mini::placeholder{color:var(--ink3)}
+.search-mini::-webkit-search-cancel-button{-webkit-appearance:none}
+.hits-head{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink3);margin:12px 0 4px}
+.hits-head .del-all{margin-left:auto;border:1px solid var(--line);background:none;font:inherit;
+  font-size:12.5px;color:var(--ink2);padding:5px 10px;border-radius:8px;cursor:pointer;
+  transition:color .15s,border-color .15s,background .15s}
+.hits-head .del-all:hover{color:var(--red);border-color:var(--red)}
+.hits-head .del-all.armed{color:#fff;background:var(--red);border-color:var(--red);font-weight:600}
+.hit{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--line);font-size:13.5px}
+.hit .hd{font-size:12px;color:var(--ink3);font-variant-numeric:tabular-nums;flex:none;width:40px}
+.hit b{font-weight:600}
+.hit .sv{margin-left:auto;color:var(--ink2);font-variant-numeric:tabular-nums;font-size:12.5px;text-align:right}
+
 /* ---------- 折线图 ---------- */
 .chart{width:100%;height:auto;display:block}
 .chart text{font-size:8px;fill:var(--ink3);font-variant-numeric:tabular-nums}
@@ -338,7 +354,11 @@ button.primary.saved{background:#2E7D4F}
       <button class="fold" id="manageOpen" type="button" aria-expanded="false">
         <b>管理记录</b><span class="arw"></span>
       </button>
-      <div class="log-list" id="logs" style="margin-top:14px" hidden></div>
+      <div id="managePanel" hidden style="margin-top:14px">
+        <input id="manageSearch" type="search" class="search-mini" placeholder="搜器械名，揪出记错的那一项" autocomplete="off">
+        <div id="manageHits"></div>
+        <div class="log-list" id="logs" style="margin-top:14px"></div>
+      </div>
     </div>
 
     <div class="block">
@@ -1103,9 +1123,80 @@ button.primary.saved{background:#2E7D4F}
   }
 
   $("#manageOpen").addEventListener("click", function(){
-    var lg = $("#logs");
-    lg.hidden = !lg.hidden;
-    this.setAttribute("aria-expanded", String(!lg.hidden));
+    var p = $("#managePanel");
+    p.hidden = !p.hidden;
+    this.setAttribute("aria-expanded", String(!p.hidden));
+  });
+
+  /* 按名字搜出来删：跨所有记录找同名的项（导入认错了、某个器械记岔了） */
+  function collectHits(q){
+    var out = [], needle = (q || "").trim().toLowerCase();
+    if (!needle) return out;
+    workouts.forEach(function(wk){
+      (wk.items || []).forEach(function(it, idx){
+        if (String(it.name).toLowerCase().indexOf(needle) >= 0) out.push({ date:wk.date, idx:idx, item:it });
+      });
+    });
+    out.sort(function(a, b){ return a.date < b.date ? 1 : -1; });
+    return out;
+  }
+
+  function renderHits(){
+    var box = $("#manageHits"), q = $("#manageSearch").value.trim();
+    if (!q){ box.innerHTML = ""; return; }
+    var hits = collectHits(q);
+    if (!hits.length){
+      box.innerHTML = '<p class="empty" style="padding:16px 0">没有名字带「' + esc(q) + '」的记录。</p>';
+      return;
+    }
+    var days = {};
+    hits.forEach(function(h){ days[h.date] = 1; });
+    box.innerHTML =
+      '<div class="hits-head"><span>匹配 ' + hits.length + ' 项，分布在 ' + Object.keys(days).length + ' 天</span>' +
+        (hits.length > 1 ? '<button class="del-all" type="button">全部删除</button>' : '') +
+      '</div>' +
+      hits.map(function(h){
+        return '<div class="hit">' +
+                 '<span class="hd">' + md2(h.date) + '</span>' +
+                 '<b>' + esc(h.item.name) + '</b>' +
+                 '<span class="sv">' + esc(itemSummary(h.item)) + '</span>' +
+                 '<button class="del-x" type="button" data-day="' + h.date + '" data-idx="' + h.idx + '" title="删掉这一项">✕</button>' +
+               '</div>';
+      }).join("");
+  }
+
+  function removeAllHits(q){
+    var hits = collectHits(q);
+    if (!hits.length) return;
+    /* 同一天里从后往前删，索引才不会错位 */
+    hits.sort(function(a, b){ return a.date === b.date ? b.idx - a.idx : (a.date < b.date ? 1 : -1); });
+    hits.forEach(function(h){
+      var wk = findDate(h.date);
+      if (wk && wk.items && wk.items[h.idx]) wk.items.splice(h.idx, 1);
+    });
+    workouts = workouts.filter(function(w){ return w.items && w.items.length; });
+    saveAll();
+    afterDataChange(hits[0].date);
+  }
+
+  $("#manageSearch").addEventListener("input", renderHits);
+
+  $("#manageHits").addEventListener("click", function(e){
+    var x = closestByClass(e.target, "del-x");
+    if (x){
+      armConfirm(x, "确定？", function(){
+        removeItem(x.getAttribute("data-day"), Number(x.getAttribute("data-idx")));
+        renderHits();
+      });
+      return;
+    }
+    var all = closestByClass(e.target, "del-all");
+    if (all){
+      armConfirm(all, "再点一次，全删掉", function(){
+        removeAllHits($("#manageSearch").value.trim());
+        renderHits();
+      });
+    }
   });
 
   $("#msOpen").addEventListener("click", function(){
