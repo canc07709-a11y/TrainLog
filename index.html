@@ -123,9 +123,16 @@ button.primary.saved{background:#2E7D4F}
 
 .stat-figure{font-size:52px;font-weight:680;letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1.05}
 .stat-figure small{font-size:16px;font-weight:500;color:var(--ink3);margin-left:4px;letter-spacing:0}
-.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;max-width:286px;margin:0 auto}
+.cal{max-width:286px;margin:0 auto}
+.cal-head{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-bottom:7px}
+.cal-head span{text-align:center;font-size:11px;line-height:1.4;color:var(--ink3)}
+.label-row{display:flex;justify-content:space-between;align-items:baseline}
+.label-row span{font-weight:500;letter-spacing:0;color:var(--ink2)}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
 .grid i{display:block;aspect-ratio:1;border-radius:3px;background:var(--field)}
 .grid i[data-on="1"]{background:var(--gc)}
+.grid i[data-future="1"]{background:transparent;box-shadow:inset 0 0 0 1px var(--line)}
+.grid i[data-today="1"]{box-shadow:0 0 0 2px var(--ink)}
 .bars{display:flex;flex-direction:column;gap:11px}
 .bar{display:flex;align-items:center;gap:11px;font-size:14px}
 .bar .name{width:42px;flex:none;color:var(--ink2)}
@@ -340,8 +347,11 @@ button.primary.saved{background:#2E7D4F}
       <p class="stat-figure" id="mCount">0<small>天</small></p>
     </div>
     <div class="block">
-      <p class="label">最近八周</p>
-      <div class="grid" id="grid"></div>
+      <p class="label label-row">最近四周<span id="gridSum"></span></p>
+      <div class="cal">
+        <div class="cal-head" aria-hidden="true"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div>
+        <div class="grid" id="grid"></div>
+      </div>
     </div>
     <div class="block">
       <p class="label">各部位练了几次</p>
@@ -863,18 +873,31 @@ button.primary.saved{background:#2E7D4F}
     var byDate = {};
     workouts.forEach(function(w){ byDate[w.date] = w; });
 
+    /* 最近四周：按周对齐（周一到周日），4 行 28 格 */
     var g = $("#grid"); g.innerHTML = "";
-    for (var i=55;i>=0;i--){
-      var d = new Date(); d.setDate(d.getDate()-i);
+    var today = new Date(); today.setHours(0,0,0,0);
+    var dow = (today.getDay()+6)%7;                                     // 周一=0 … 周日=6
+    var start = new Date(today); start.setDate(today.getDate()-dow-21); // 往前三周 + 本周
+    var todayK = keyOf(today), trained = 0;
+    for (var i=0;i<28;i++){
+      var d = new Date(start); d.setDate(start.getDate()+i);
       var k = keyOf(d), cell = document.createElement("i");
-      if (byDate[k]){
+      if (d > today){
+        cell.setAttribute("data-future","1");                           // 本周还没到的日子
+        cell.title = (d.getMonth()+1)+"月"+d.getDate()+"日";
+      } else if (byDate[k]){
         cell.setAttribute("data-on","1");
         var ps = placesOf(byDate[k]);
         cell.style.setProperty("--gc", ps.length ? (PLACE_COLOR[ps[0]]||"#6B7280") : "#C1352B");
+        cell.title = (d.getMonth()+1)+"月"+d.getDate()+"日 · "+placesOf(byDate[k]).join("/");
+        trained++;
+      } else {
+        cell.title = (d.getMonth()+1)+"月"+d.getDate()+"日 · 没练";
       }
-      cell.title = (d.getMonth()+1)+"月"+d.getDate()+"日" + (byDate[k] ? " · "+placesOf(byDate[k]).join("/") : "");
+      if (k === todayK) cell.setAttribute("data-today","1");
       g.appendChild(cell);
     }
+    $("#gridSum").textContent = trained ? "练了 "+trained+" 天" : "";
 
     var counts = {};
     workouts.forEach(function(w){
