@@ -129,10 +129,14 @@ button.primary.saved{background:#2E7D4F}
 .label-row{display:flex;justify-content:space-between;align-items:baseline}
 .label-row span{font-weight:500;letter-spacing:0;color:var(--ink2)}
 .grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
-.grid i{display:block;aspect-ratio:1;border-radius:3px;background:var(--field)}
+.grid i{display:block;aspect-ratio:1;border-radius:3px;background:var(--field);cursor:pointer}
 .grid i[data-on="1"]{background:var(--gc)}
 .grid i[data-future="1"]{background:transparent;box-shadow:inset 0 0 0 1px var(--line)}
 .grid i[data-today="1"]{box-shadow:0 0 0 2px var(--ink)}
+.grid i[data-sel="1"]{outline:2px solid var(--ink);outline-offset:2px}
+.grid i[data-future="1"]{cursor:default}
+.day-info{max-width:286px;margin:11px auto 0;font-size:12.5px;color:var(--ink2);line-height:1.65;text-align:center}
+.day-info b{font-weight:600;color:var(--ink);margin-right:7px}
 .bars{display:flex;flex-direction:column;gap:11px}
 .bar{display:flex;align-items:center;gap:11px;font-size:14px}
 .bar .name{width:42px;flex:none;color:var(--ink2)}
@@ -144,7 +148,7 @@ button.primary.saved{background:#2E7D4F}
 .log-list .row .dot{width:8px;height:8px;border-radius:50%;flex:none;transform:translateY(-1px)}
 .log-list .row .d{font-size:12.5px;color:var(--ink3);font-variant-numeric:tabular-nums;width:52px;flex:none}
 .log-list .row .p{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.log-list .row .v{margin-left:auto;font-size:12.5px;color:var(--ink3);font-variant-numeric:tabular-nums;flex:none;padding-left:8px}
+.log-list .row .v{margin-left:auto;font-size:12.5px;color:var(--ink3);font-variant-numeric:tabular-nums;flex:none;padding-left:8px;max-width:48%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .empty{text-align:center;color:var(--ink3);font-size:14px;padding:40px 20px;line-height:1.7}
 
 /* ---------- 记录条目：展开看细节 / 删除 ---------- */
@@ -156,6 +160,7 @@ button.primary.saved{background:#2E7D4F}
   transform:rotate(45deg) translateY(-1px);transition:transform .15s}
 .log-list details[open]>summary.row::after{transform:rotate(-135deg) translateY(-1px)}
 .log-detail{padding:2px 0 13px;border-top:1px dashed var(--line)}
+.log-detail .log-date{font-size:12.5px;color:var(--ink3);padding:9px 0 0;font-variant-numeric:tabular-nums}
 .log-detail .li{display:flex;align-items:center;gap:8px;padding:9px 0;font-size:13.5px}
 .log-detail .li .dot{width:8px;height:8px;border-radius:50%;flex:none}
 .log-detail .li b{font-weight:600}
@@ -352,6 +357,7 @@ button.primary.saved{background:#2E7D4F}
         <div class="cal-head" aria-hidden="true"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div>
         <div class="grid" id="grid"></div>
       </div>
+      <p class="day-info" id="dayInfo"></p>
     </div>
     <div class="block">
       <p class="label">各部位练了几次</p>
@@ -865,6 +871,26 @@ button.primary.saved{background:#2E7D4F}
     return Object.keys(set);
   }
 
+  /* 「最近四周」点阵：点某一天，下面显示那天的日期和内容 */
+  var selDate = null;
+  function showDay(k){
+    var box = $("#dayInfo"); if (!box || !k) return;
+    var mm = Number(k.slice(5,7)), dd = Number(k.slice(8,10));
+    var wd = "日一二三四五六".charAt(new Date(k+"T00:00:00").getDay());
+    var w = findDate(k), txt;
+    if (w && (w.items||[]).length){
+      txt = (w.items||[]).map(function(it){
+        if (it.cardio) return esc(it.name)+" "+(it.cardio.min||"–")+" 分钟";
+        var s0 = (it.sets||[])[0];
+        return esc(it.name)+(s0 && (s0.w||s0.s) ? " "+(s0.w||"–")+" kg × "+(s0.s||"–")+" 组" : "");
+      }).join(" · ");
+    } else {
+      var t0 = new Date(); t0.setHours(0,0,0,0);
+      txt = (new Date(k+"T00:00:00") > t0) ? "还没到" : "没练";
+    }
+    box.innerHTML = "<b>"+mm+"月"+dd+"日 星期"+wd+"</b><span>"+txt+"</span>";
+  }
+
   function renderStats(){
     var now = new Date();
     var ym = now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0");
@@ -879,9 +905,11 @@ button.primary.saved{background:#2E7D4F}
     var dow = (today.getDay()+6)%7;                                     // 周一=0 … 周日=6
     var start = new Date(today); start.setDate(today.getDate()-dow-21); // 往前三周 + 本周
     var todayK = keyOf(today), trained = 0;
+    if (!selDate) selDate = todayK;
     for (var i=0;i<28;i++){
       var d = new Date(start); d.setDate(start.getDate()+i);
       var k = keyOf(d), cell = document.createElement("i");
+      cell.setAttribute("data-date", k);
       if (d > today){
         cell.setAttribute("data-future","1");                           // 本周还没到的日子
         cell.title = (d.getMonth()+1)+"月"+d.getDate()+"日";
@@ -895,9 +923,11 @@ button.primary.saved{background:#2E7D4F}
         cell.title = (d.getMonth()+1)+"月"+d.getDate()+"日 · 没练";
       }
       if (k === todayK) cell.setAttribute("data-today","1");
+      if (k === selDate) cell.setAttribute("data-sel","1");
       g.appendChild(cell);
     }
     $("#gridSum").textContent = trained ? "练了 "+trained+" 天" : "";
+    showDay(selDate);
 
     var counts = {};
     workouts.forEach(function(w){
@@ -932,21 +962,25 @@ button.primary.saved{background:#2E7D4F}
       lg.innerHTML = '<p class="empty">暂时空着。</p>';
     } else {
       lg.innerHTML = recent.map(function(w){
-        var total = 0, cmin = 0;
+        var cmin = 0;
         (w.items||[]).forEach(function(it){
-          if (it.cardio){ cmin += Number(it.cardio.min) || 0; return; }
-          (it.sets||[]).forEach(function(s){
-            total += (Number(s.w)||0) * (Number(s.s)||0) * (Number(s.r)||1);
-          });
+          if (it.cardio) cmin += Number(it.cardio.min) || 0;
         });
         var ps = placesOf(w);
         var mm = Number(w.date.slice(5,7)), dd = Number(w.date.slice(8,10));
+        var wd = "日一二三四五六".charAt(new Date(w.date+"T00:00:00").getDay());
         var names = (w.items||[]).map(function(it){ return it.name; }).join(" · ");
+
+        /* 右侧改成当天的动作数据（力量写「重量×组数」，最多两项）+ 有氧时长；
+           不再显示「重量×组数×次数」乘出来的总容量 */
         var bits = [];
-        if (total) bits.push(total.toLocaleString()+" kg");
+        (w.items||[]).filter(function(it){ return !it.cardio; }).slice(0,2).forEach(function(it){
+          var s0 = (it.sets||[])[0];
+          if (s0 && (s0.w || s0.s)) bits.push((s0.w||"–")+"kg×"+(s0.s||"–")+"组");
+        });
         if (cmin) bits.push(cmin+" 分钟");
 
-        var detail = (w.items||[]).map(function(it, idx){
+        var detail = '<p class="log-date">'+mm+'月'+dd+'日 星期'+wd+'</p>'+(w.items||[]).map(function(it, idx){
           return '<div class="li">'+
                    '<span class="dot" style="background:'+colorOf(it.name)+'"></span>'+
                    '<b>'+esc(it.name)+'</b>'+
@@ -1737,6 +1771,15 @@ button.primary.saved{background:#2E7D4F}
       r.readAsText(f);
     });
     input.click();
+  });
+
+  $("#grid").addEventListener("click", function(e){
+    var t = e.target.closest ? e.target.closest("i") : null;
+    if (!t || !t.getAttribute("data-date")) return;
+    selDate = t.getAttribute("data-date");
+    [].forEach.call(this.children, function(c){ c.removeAttribute("data-sel"); });
+    t.setAttribute("data-sel","1");
+    showDay(selDate);
   });
 
   migrateNames();
