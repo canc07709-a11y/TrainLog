@@ -1,5 +1,5 @@
 {
-  "name": "训练日志",
+  "name": "TrainLog",
   "short_name": "TrainLog",
   "description": "选器械、记重量、看进步",
   "start_url": "./",

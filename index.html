@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>训练日志</title>
+<title>TrainLog</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
@@ -172,11 +172,10 @@ button.primary.saved{background:#2E7D4F}
   cursor:pointer;padding:2px 4px;line-height:1;border-radius:7px;transition:color .15s,background .15s}
 .del-x:hover{color:var(--red)}
 .del-x.armed{color:#fff;background:var(--red);font-size:12.5px;font-weight:600;padding:4px 9px}
-.del-day{width:100%;margin-top:4px;border:1px solid var(--line);background:none;font:inherit;
-  font-size:13px;color:var(--ink3);padding:10px 0;border-radius:9px;cursor:pointer;
+.edit-day{width:100%;margin-top:4px;border:1px solid var(--line);background:none;font:inherit;
+  font-size:13px;color:var(--ink2);padding:10px 0;border-radius:9px;cursor:pointer;
   transition:color .15s,border-color .15s,background .15s}
-.del-day:hover{color:var(--red);border-color:var(--red)}
-.del-day.armed{color:#fff;background:var(--red);border-color:var(--red);font-weight:600}
+.edit-day:hover{color:var(--ink);border-color:var(--ink2)}
 
 /* ---------- 日期 / 补录 ---------- */
 .datein{border:1px solid var(--line);background:var(--field);border-radius:10px;padding:11px 13px;
@@ -310,7 +309,7 @@ button.primary.saved{background:#2E7D4F}
 <main class="app">
 
   <header class="top">
-    <h1>训练日志</h1>
+    <h1>TrainLog</h1>
     <time id="today"></time>
   </header>
 
@@ -989,7 +988,7 @@ button.primary.saved{background:#2E7D4F}
                  '</div>';
         }).join("");
         if (w.note) detail += '<p class="li-note">'+esc(w.note)+'</p>';
-        detail += '<button class="del-day" type="button" data-day="'+w.date+'">删除这一天的记录</button>';
+        detail += '<button class="edit-day" type="button" data-day="'+w.date+'">修改这天的记录</button>';
 
         return '<details>'+
                  '<summary class="row">'+
@@ -1299,11 +1298,14 @@ button.primary.saved{background:#2E7D4F}
       });
       return;
     }
-    var db = closestByClass(e.target, "del-day");
-    if (db){
-      armConfirm(db, "再点一次，删掉这一天", function(){
-        removeDay(db.getAttribute("data-day"));
-      });
+    var ed = closestByClass(e.target, "edit-day");
+    if (ed){
+      var day = ed.getAttribute("data-day");
+      editingDate = day;                 // 切到那天
+      loadFrom(findDate(day));           // 把那天的记录读进编辑态
+      editing = true;
+      showView("log");
+      openDrawer(false);
     }
   });
 
@@ -1408,16 +1410,16 @@ button.primary.saved{background:#2E7D4F}
   $("#search").addEventListener("input", renderLibrary);
 
   /* ================= 切换 ================= */
-  Array.prototype.forEach.call(document.querySelectorAll(".tabs button"), function(b){
-    b.addEventListener("click", function(){
-      Array.prototype.forEach.call(document.querySelectorAll(".tabs button"), function(x){
-        x.setAttribute("aria-selected", String(x===b));
-      });
-      var v = b.getAttribute("data-view");
-      $("#view-log").hidden   = v!=="log";
-      $("#view-stats").hidden = v!=="stats";
-      if (v==="stats") renderStats();
+  function showView(v){
+    Array.prototype.forEach.call(document.querySelectorAll(".tabs button"), function(x){
+      x.setAttribute("aria-selected", String(x.getAttribute("data-view")===v));
     });
+    $("#view-log").hidden   = v!=="log";
+    $("#view-stats").hidden = v!=="stats";
+    if (v==="stats") renderStats();
+  }
+  Array.prototype.forEach.call(document.querySelectorAll(".tabs button"), function(b){
+    b.addEventListener("click", function(){ showView(b.getAttribute("data-view")); });
   });
 
   /* ================= 启动 ================= */
