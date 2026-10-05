@@ -137,12 +137,25 @@ button.primary.saved{background:#2E7D4F}
 .grid i[data-future="1"]{cursor:default}
 .day-info{max-width:286px;margin:11px auto 0;font-size:12.5px;color:var(--ink2);line-height:1.65;text-align:center}
 .day-info b{font-weight:600;color:var(--ink);margin-right:7px}
-.bars{display:flex;flex-direction:column;gap:11px}
+.bars{display:flex;flex-direction:column;gap:2px}
 .bar{display:flex;align-items:center;gap:11px;font-size:14px}
 .bar .name{width:42px;flex:none;color:var(--ink2)}
 .bar .track{flex:1;height:8px;background:var(--field);border-radius:99px;overflow:hidden}
 .bar .track i{display:block;height:100%;border-radius:99px;background:var(--gc);transition:width .35s ease}
 .bar .n{width:22px;text-align:right;flex:none;color:var(--ink3);font-variant-numeric:tabular-nums;font-size:13px}
+.pbar>summary.bar{cursor:pointer;list-style:none;padding:6px 0;border-radius:8px}
+.pbar>summary.bar::-webkit-details-marker{display:none}
+.pbar>summary.bar::after{content:"";width:6px;height:6px;flex:none;margin-left:2px;
+  border-right:1.6px solid var(--ink3);border-bottom:1.6px solid var(--ink3);
+  transform:rotate(45deg) translateY(-1px);transition:transform .15s}
+.pbar[open]>summary.bar::after{transform:rotate(-135deg) translateY(-1px)}
+.subbars{padding:2px 0 8px 13px;display:flex;flex-direction:column;gap:9px;
+  border-left:2px solid var(--line);margin:0 0 4px 3px}
+.sub-bar{display:flex;align-items:center;gap:9px;font-size:13px}
+.sub-bar .sname{flex:none;max-width:112px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink2)}
+.sub-bar .strack{flex:1;height:6px;background:var(--field);border-radius:99px;overflow:hidden}
+.sub-bar .strack i{display:block;height:100%;border-radius:99px;background:var(--gc);transition:width .35s ease}
+.sub-bar .sn{width:22px;text-align:right;flex:none;color:var(--ink3);font-variant-numeric:tabular-nums;font-size:12.5px}
 .log-list{border-top:1px solid var(--line)}
 .log-list .row{display:flex;align-items:baseline;gap:10px;padding:12px 0;border-bottom:1px solid var(--line)}
 .log-list .row .dot{width:8px;height:8px;border-radius:50%;flex:none;transform:translateY(-1px)}
@@ -928,9 +941,18 @@ button.primary.saved{background:#2E7D4F}
     $("#gridSum").textContent = trained ? "练了 "+trained+" 天" : "";
     showDay(selDate);
 
-    var counts = {};
+    /* 各部位练了几次；点开某个部位，看这个部位里每种器械各练了几次 */
+    var counts = {}, byMachine = {};
     workouts.forEach(function(w){
       placesOf(w).forEach(function(p){ counts[p] = (counts[p]||0)+1; });
+      var seen = {};
+      (w.items||[]).forEach(function(it){
+        var p = PLACE_OF[it.name] || "其他";
+        if (seen[p+"|"+it.name]) return;        // 同一天同一台只算一次
+        seen[p+"|"+it.name] = 1;
+        if (!byMachine[p]) byMachine[p] = {};
+        byMachine[p][it.name] = (byMachine[p][it.name]||0)+1;
+      });
     });
     var list = Object.keys(counts).map(function(k){ return [k,counts[k]]; })
                      .sort(function(a,b){ return b[1]-a[1]; });
@@ -940,12 +962,26 @@ button.primary.saved{background:#2E7D4F}
     } else {
       var max = list[0][1];
       box.innerHTML = list.map(function(x){
-        var pct = Math.max(6, Math.round(x[1]/max*100));
-        return '<div class="bar" style="--gc:'+(PLACE_COLOR[x[0]]||"#6B7280")+'">'+
-                 '<span class="name">'+x[0]+'</span>'+
-                 '<span class="track"><i style="width:'+pct+'%"></i></span>'+
-                 '<span class="n">'+x[1]+'</span>'+
-               '</div>';
+        var p = x[0], n = x[1];
+        var pct = Math.max(6, Math.round(n/max*100));
+        var ms = Object.keys(byMachine[p] || {}).map(function(m){ return [m, byMachine[p][m]]; })
+                   .sort(function(a,b){ return b[1]-a[1] || (a[0] < b[0] ? -1 : 1); });
+        var mmax = ms.length ? ms[0][1] : 1;
+        var inner = ms.map(function(m){
+          return '<div class="sub-bar">'+
+                   '<span class="sname">'+esc(m[0])+'</span>'+
+                   '<span class="strack"><i style="width:'+Math.max(6, Math.round(m[1]/mmax*100))+'%"></i></span>'+
+                   '<span class="sn">'+m[1]+'</span>'+
+                 '</div>';
+        }).join("");
+        return '<details class="pbar" style="--gc:'+(PLACE_COLOR[p]||"#6B7280")+'">'+
+                 '<summary class="bar">'+
+                   '<span class="name">'+esc(p)+'</span>'+
+                   '<span class="track"><i style="width:'+pct+'%"></i></span>'+
+                   '<span class="n">'+n+'</span>'+
+                 '</summary>'+
+                 '<div class="subbars">'+inner+'</div>'+
+               '</details>';
       }).join("");
     }
 
@@ -1503,6 +1539,7 @@ button.primary.saved{background:#2E7D4F}
   /* 去掉行首序号、部位前缀，取出器械名 */
   function cleanName(s){
     var name = String(s).replace(/[：:=\-—，,、\s]+$/, "").trim();
+    name = name.replace(/^(今日|今天|昨天|昨日|本日)\s*[：:=\-—]?\s*/, "").trim();   // 计划开头常见的时间词
     name = name.replace(/^(有氧|力量|无氧|热身|拉伸|核心)\s*[：:=\-—]?\s*/, "").trim();
     return name;
   }
@@ -1581,6 +1618,7 @@ button.primary.saved{background:#2E7D4F}
       /* 力量行不再找有氧参数；范围写法（7-8档）取前一个数 */
       if (!(target.sets != null && target.reps != null)){
         [[/(?:阻抗|阻力|阻值|载荷)\s*[:：]?\s*(\d+(?:\.\d+)?)/, "resist"],
+         [/(\d+(?:\.\d+)?)\s*档(?!位)/, "resist"],          // 「9档」这种数字在前的写法
          [/(?:坡度|斜度|倾角|上坡)\s*[:：]?\s*(\d+(?:\.\d+)?)/, "incline"],
          [/(?:速度|速率)\s*[:：]?\s*(\d+(?:\.\d+)?)/, "speed"],
          [/(?:踏频|转速|节奏)\s*[:：]?\s*(\d+(?:\.\d+)?)/, "rpm"],
