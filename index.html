@@ -941,10 +941,10 @@ button.primary.saved{background:#2E7D4F}
     $("#gridSum").textContent = trained ? "练了 "+trained+" 天" : "";
     showDay(selDate);
 
-    /* 各部位练了几次；点开某个部位，看这个部位里每种器械各练了几次 */
-    var counts = {}, byMachine = {};
+    /* 各部位练了几次；点开某个部位，看这个部位里每种器械各练了几次。
+       部位的数字 = 该部位各器械的次数之和（2026-10-01 用户要求，跟展开的子项对得上） */
+    var byMachine = {};
     workouts.forEach(function(w){
-      placesOf(w).forEach(function(p){ counts[p] = (counts[p]||0)+1; });
       var seen = {};
       (w.items||[]).forEach(function(it){
         var p = PLACE_OF[it.name] || "其他";
@@ -953,6 +953,10 @@ button.primary.saved{background:#2E7D4F}
         if (!byMachine[p]) byMachine[p] = {};
         byMachine[p][it.name] = (byMachine[p][it.name]||0)+1;
       });
+    });
+    var counts = {};
+    Object.keys(byMachine).forEach(function(p){
+      counts[p] = Object.keys(byMachine[p]).reduce(function(a,m){ return a + byMachine[p][m]; }, 0);
     });
     var list = Object.keys(counts).map(function(k){ return [k,counts[k]]; })
                      .sort(function(a,b){ return b[1]-a[1]; });
