@@ -221,6 +221,7 @@ button.primary.saved{background:#2E7D4F}
 .ms-row::-webkit-details-marker{display:none}
 .ms-row b{font-size:14.5px;font-weight:600}
 .ms-row .ms-v{margin-left:auto;font-size:14px;font-weight:600;font-variant-numeric:tabular-nums}
+.ms-row .ms-v .mx{font-style:normal;font-size:10.5px;font-weight:700;color:#B07A00;letter-spacing:.02em;margin-right:3px}
 .ms-row .ms-c{font-size:12px;color:var(--ink3);flex:none;font-variant-numeric:tabular-nums}
 .ms-chart{padding:2px 0 14px}
 .ms-note{font-size:12px;color:var(--ink3);margin-top:-6px}
@@ -252,8 +253,13 @@ button.primary.saved{background:#2E7D4F}
   box-shadow:0 12px 34px rgba(20,24,30,.3);
   transform:translate(-50%,-170%);opacity:0;pointer-events:none;
   transition:transform .3s cubic-bezier(.32,.72,0,1),opacity .3s}
-.toast.show{transform:translate(-50%,0);opacity:1}
-.toast .th{font-size:11px;font-weight:700;letter-spacing:.12em;color:#E9BE4E;margin-bottom:7px}
+.toast.show{transform:translate(-50%,0);opacity:1;pointer-events:auto}
+.toast .tx{position:absolute;top:7px;right:7px;width:26px;height:26px;border:0;background:none;
+  color:rgba(255,255,255,.5);font:inherit;font-size:13px;line-height:1;cursor:pointer;
+  border-radius:8px;padding:0;transition:color .15s,background .15s}
+.toast .tx:hover{color:#fff;background:rgba(255,255,255,.14)}
+.toast .th{font-size:12px;font-weight:700;letter-spacing:.1em;color:#E9BE4E;
+  text-align:center;margin-bottom:9px}
 .toast .pr{display:flex;align-items:baseline;gap:8px;font-size:14px;padding:2px 0}
 .toast .pr .n{font-weight:600}
 .toast .pr .v{font-variant-numeric:tabular-nums;font-weight:600}
@@ -1175,7 +1181,7 @@ button.primary.saved{background:#2E7D4F}
                  return '<details class="ms-item" data-name="'+esc(n)+'">'+
                           '<summary class="ms-row">'+
                             '<b>'+esc(n)+'</b>'+
-                            '<span class="ms-v">'+best[n].w+' kg</span>'+
+                            '<span class="ms-v"><i class="mx">🏆MAX</i>'+best[n].w+' kg</span>'+
                             '<span class="ms-c">'+best[n].n+' 次</span>'+
                           '</summary>'+
                           '<div class="ms-chart"></div>'+
@@ -1389,11 +1395,17 @@ button.primary.saved{background:#2E7D4F}
                '<span class="o">上次 '+h.old+' kg</span></div>';
     }).join("");
     if (hits.length > 3) rows += '<div class="pr"><span class="o" style="margin-left:0">…还有 '+(hits.length-3)+' 项</span></div>';
-    t.innerHTML = '<p class="th">新纪录</p>' + rows;
+    t.innerHTML = '<button class="tx" type="button" aria-label="关闭">✕</button>' +
+                  '<p class="th">🏆 新纪录 🏆</p>' + rows;
     t.classList.add("show");
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(function(){ t.classList.remove("show"); }, 4600);
+    toastTimer = setTimeout(function(){ t.classList.remove("show"); }, 8000);   // 多留一会儿；也可以点右上角 ✕ 自己关
   }
+  $("#toast").addEventListener("click", function(e){
+    if (!e.target.closest || !e.target.closest(".tx")) return;
+    clearTimeout(toastTimer);
+    this.classList.remove("show");
+  });
 
   /* ================= 保存 ================= */
   $("#save").addEventListener("click", function(){
