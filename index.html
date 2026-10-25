@@ -273,7 +273,8 @@ button.primary.saved{background:#2E7D4F}
 .toast .tx:hover{color:#fff;background:rgba(255,255,255,.14)}
 .toast .th{font-size:12px;font-weight:700;letter-spacing:.1em;color:#E9BE4E;
   text-align:center;margin-bottom:9px}
-.toast .pr{display:flex;align-items:baseline;gap:9px;font-size:13.5px;padding:2px 0}
+.toast .rows{max-height:46vh;overflow:auto;-webkit-overflow-scrolling:touch;margin-top:2px}
+.toast .pr{display:flex;align-items:baseline;gap:9px;font-size:13.5px;padding:3px 0}
 .toast .pr .n{flex:1 1 auto;min-width:0;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .toast .pr .v{flex:none;font-variant-numeric:tabular-nums;font-weight:600;white-space:nowrap}
 .toast .pr .o{flex:none;font-size:11.5px;color:rgba(255,255,255,.6);
@@ -498,7 +499,7 @@ button.primary.saved{background:#2E7D4F}
     "背": ["高位下拉","坐姿划船机","器械划船","反向飞鸟机","引体向上","杠铃划船","哑铃单臂划船","坐姿直臂下压","T杠划船"],
     "腿": ["腿举机","腿屈伸机","腿弯举机","哈克深蹲","史密斯深蹲","杠铃深蹲","箭步蹲","臀推机","髋内收机","髋外展机","坐姿提踵机"],
     "肩": ["肩推机","反向蝴蝶机","杠铃推举","哑铃推举","哑铃侧平举","面拉"],
-    "手臂": ["二头弯举机","牧师凳弯举","三头臂屈伸机","绳索下压","哑铃弯举","锤式弯举","窄距卧推"],
+    "手臂": ["二头弯举机","牧师凳弯举","三头臂屈伸机","绳索下压","绳索弯举","哑铃弯举","锤式弯举","窄距卧推"],
     "核心": ["卷腹机","罗马椅","悬垂举腿","绳索卷腹","平板支撑"],
     "有氧": ["跑步机","椭圆机","动感单车","划船机","登山机","踏步机","跳绳"],
     "其他": ["壶铃","弹力带","TRX","药球","战绳"]
@@ -1421,14 +1422,15 @@ button.primary.saved{background:#2E7D4F}
   function showToast(hits){
     var t = $("#toast");
     if (!t || !hits.length) return;
-    var rows = hits.slice(0,3).map(function(h){
+    /* 全部列出来，不再只显示前 3 条（多了就在框里滚动） */
+    var rows = hits.map(function(h){
       return '<div class="pr"><span class="n">'+esc(h.name)+'</span>'+
                '<span class="v">'+h.w+' kg</span>'+
                '<span class="o">上次 '+h.old+' kg</span></div>';
     }).join("");
-    if (hits.length > 3) rows += '<div class="pr"><span class="o" style="margin-left:0">…还有 '+(hits.length-3)+' 项</span></div>';
     t.innerHTML = '<button class="tx" type="button" aria-label="关闭">✕</button>' +
-                  '<p class="th">🏆 新纪录 🏆</p>' + rows;
+                  '<p class="th">🏆 新纪录 🏆</p>' +
+                  '<div class="rows">' + rows + '</div>';
     t.classList.add("show");
     clearTimeout(toastTimer);
     toastTimer = setTimeout(function(){ t.classList.remove("show"); }, 8000);   // 多留一会儿；也可以点右上角 ✕ 自己关
@@ -1541,7 +1543,10 @@ button.primary.saved{background:#2E7D4F}
     /* 三头下压的各种叫法（2026-10-01 用户反馈「龙门架绳索三头下压」认不出） */
     "龙门架绳索三头下压":"绳索下压", "龙门架三头下压":"绳索下压", "绳索三头下压":"绳索下压",
     "三头下压":"绳索下压", "绳索臂屈伸":"绳索下压", "下压":"绳索下压",
-    "绳索下压机":"绳索下压"
+    "绳索下压机":"绳索下压",
+    /* 绳索弯举（2026-10-01 加进清单，这里收它的各种叫法） */
+    "龙门架绳索弯举":"绳索弯举", "龙门架弯举":"绳索弯举", "绳索二头弯举":"绳索弯举",
+    "绳索弯举机":"绳索弯举", "钢线弯举":"绳索弯举"
   };
 
   function normName(s){
