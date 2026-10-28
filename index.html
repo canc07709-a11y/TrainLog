@@ -547,6 +547,40 @@ button.primary.saved{background:#2E7D4F}
     });
     if (changed) store.set("workouts", workouts);
   }
+
+  /* 一次性合并：只把「已经存在的历史记录」挪到另一台器械，跑一次就不再跑。
+     用 localStorage 的 migrations 记一下跑过没有，这样以后还能正常记这两台。
+     （跟 RENAME 的区别：RENAME 每次启动都跑，会把将来记的也一起改掉） */
+  var MERGE_ONCE = {
+    id: "merge-20261001",
+    map: { "龙门架夹胸":"蝴蝶机夹胸", "二头弯举机":"绳索弯举" }
+  };
+  function mergeOnce(){
+    var done = store.get("migrations", []);
+    if (done.indexOf(MERGE_ONCE.id) >= 0) return;          // 已经跑过了
+
+    var changed = false;
+    workouts.forEach(function(w){
+      var items = w.items || [];
+      items.forEach(function(it){
+        if (MERGE_ONCE.map[it.name]){ it.name = MERGE_ONCE.map[it.name]; changed = true; }
+      });
+      /* 同一天里改完可能撞成两台同名：合成一台，组数接在后面 */
+      var merged = [], seen = {};
+      items.forEach(function(it){
+        var prev = seen[it.name];
+        if (!prev){ seen[it.name] = it; merged.push(it); return; }
+        prev.sets = (prev.sets || []).concat(it.sets || []);
+        if (!prev.cardio && it.cardio) prev.cardio = it.cardio;
+        changed = true;
+      });
+      w.items = merged;
+    });
+
+    if (changed) store.set("workouts", workouts);
+    done.push(MERGE_ONCE.id);
+    store.set("migrations", done);
+  }
   var picked  = [];                            // 今天选中的器械（有序）
   var draft   = {};                            // 器械名 -> [{w,s,r}]
   var draftCardio = {};                        // 有氧器械名 -> {min, resist, speed, ...}
@@ -1894,6 +1928,7 @@ button.primary.saved{background:#2E7D4F}
   });
 
   migrateNames();
+  mergeOnce();
   loadFrom(findToday());
   editing = false;
   renderLibrary();
