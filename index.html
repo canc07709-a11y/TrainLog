@@ -551,34 +551,46 @@ button.primary.saved{background:#2E7D4F}
   /* 一次性合并：只把「已经存在的历史记录」挪到另一台器械，跑一次就不再跑。
      用 localStorage 的 migrations 记一下跑过没有，这样以后还能正常记这两台。
      （跟 RENAME 的区别：RENAME 每次启动都跑，会把将来记的也一起改掉） */
-  var MERGE_ONCE = {
-    id: "merge-20261001",
-    map: { "龙门架夹胸":"蝴蝶机夹胸", "二头弯举机":"绳索弯举" }
-  };
+  var MERGE_ONCE = [
+    { id: "merge-20261001a",
+      map: { "龙门架夹胸":"蝴蝶机夹胸", "二头弯举机":"绳索弯举" } },
+    { id: "merge-20261001b",
+      map: { "龙门架绳索三头下压":"绳索下压" },
+      dropCustom: ["龙门架绳索三头下压"] }        // 顺带从「其他」里拿掉这个自定义器械
+  ];
   function mergeOnce(){
     var done = store.get("migrations", []);
-    if (done.indexOf(MERGE_ONCE.id) >= 0) return;          // 已经跑过了
-
     var changed = false;
-    workouts.forEach(function(w){
-      var items = w.items || [];
-      items.forEach(function(it){
-        if (MERGE_ONCE.map[it.name]){ it.name = MERGE_ONCE.map[it.name]; changed = true; }
+
+    MERGE_ONCE.forEach(function(mg){
+      if (done.indexOf(mg.id) >= 0) return;               // 这条已经跑过了
+
+      workouts.forEach(function(w){
+        var items = w.items || [];
+        items.forEach(function(it){
+          if (mg.map[it.name]){ it.name = mg.map[it.name]; changed = true; }
+        });
+        /* 同一天里改完可能撞成两台同名：合成一台，组数接在后面 */
+        var merged = [], seen = {};
+        items.forEach(function(it){
+          var prev = seen[it.name];
+          if (!prev){ seen[it.name] = it; merged.push(it); return; }
+          prev.sets = (prev.sets || []).concat(it.sets || []);
+          if (!prev.cardio && it.cardio) prev.cardio = it.cardio;
+          changed = true;
+        });
+        w.items = merged;
       });
-      /* 同一天里改完可能撞成两台同名：合成一台，组数接在后面 */
-      var merged = [], seen = {};
-      items.forEach(function(it){
-        var prev = seen[it.name];
-        if (!prev){ seen[it.name] = it; merged.push(it); return; }
-        prev.sets = (prev.sets || []).concat(it.sets || []);
-        if (!prev.cardio && it.cardio) prev.cardio = it.cardio;
-        changed = true;
-      });
-      w.items = merged;
+
+      if (mg.dropCustom){
+        for (var i = custom.length - 1; i >= 0; i--){
+          if (mg.dropCustom.indexOf(custom[i]) >= 0){ custom.splice(i, 1); changed = true; }
+        }
+      }
+      done.push(mg.id);
     });
 
-    if (changed) store.set("workouts", workouts);
-    done.push(MERGE_ONCE.id);
+    if (changed){ store.set("workouts", workouts); store.set("custom", custom); }
     store.set("migrations", done);
   }
   var picked  = [];                            // 今天选中的器械（有序）
@@ -1190,17 +1202,39 @@ button.primary.saved{background:#2E7D4F}
     var marks = {};
     if (n <= 8){ ps.forEach(function(p, k){ marks[k] = 1; }); }
     else { marks[0] = 1; marks[maxI] = 1; marks[n - 1] = 1; }
-    Object.keys(marks).forEach(function(k){
-      var i = Number(k), yy = Y(ps[i].v), above = yy > T + 12;
-      svg += '<text x="' + X(i).toFixed(1) + '" y="' + (above ? yy - 6 : yy + 12).toFixed(1) +
-             '" text-anchor="middle" style="fill:' + color + ';font-size:9px;font-weight:600">' + ps[i].v + '</text>';
+    /* 点多时只标 3 个：如果「最高」和「最新」正好挨着，只留最新那个，否则两个数字会叠在一起。
+       点少（≤8）时本来就全标、间距够，不用处理 */
+    var mk = Object.keys(marks).map(Number).sort(function(a,b){ return a-b; }), kept = [];
+    if (n <= 8){ kept = mk; }
+    else {
+      mk.forEach(function(i){
+        var prev = kept[kept.length - 1];
+        if (prev !== undefined && i - prev < 2){
+          if (prev === 0) return;            // 第一个点的数值优先保留
+          kept[kept.length - 1] = i;         // 后一个顶掉前一个
+        } else kept.push(i);
+      });
+    }
+
+    kept.forEach(function(i){
+      var yy = Y(ps[i].v), above = yy > T + 12;
+      /* 首尾两点的数值往内收，否则会压到左边的 Y 轴刻度 / 右边的边框 */
+      var anchor = (n === 1) ? "middle" : (i === 0 ? "start" : (i === n - 1 ? "end" : "middle"));
+      var xx = X(i) + (i === 0 ? 3 : (i === n - 1 && n > 1 ? -3 : 0));
+      svg += '<text x="' + xx.toFixed(1) + '" y="' + (above ? yy - 6 : yy + 12).toFixed(1) +
+             '" text-anchor="' + anchor + '" style="fill:' + color + ';font-size:9px;font-weight:600">' + ps[i].v + '</text>';
     });
 
-    /* x 轴日期：最多标 5~6 个，均匀铺开（原来只标首尾，太稀） */
+    /* x 轴日期：最多标 5~6 个，均匀铺开（原来只标首尾，太稀）；
+       最后一个日期如果离前一个太近，就顶掉前一个，避免两个日期叠在一起 */
     var step = Math.max(1, Math.ceil(n / 5));
     var ticks = [];
     for (var ti = 0; ti < n; ti += step) ticks.push(ti);
-    if (ticks[ticks.length - 1] !== n - 1) ticks.push(n - 1);
+    var lastI = n - 1;
+    if (ticks[ticks.length - 1] !== lastI){
+      if (ticks.length > 1 && (lastI - ticks[ticks.length - 1]) < step * 0.7) ticks[ticks.length - 1] = lastI;
+      else ticks.push(lastI);
+    }
     ticks.forEach(function(i){
       var anchor = (n === 1) ? "middle" : (i === 0 ? "start" : (i === n - 1 ? "end" : "middle"));
       svg += '<text x="' + X(i).toFixed(1) + '" y="' + (H - 6) + '" text-anchor="' + anchor + '">' + lab(ps[i]) + '</text>';
